@@ -11,6 +11,8 @@ export interface ScanResult {
   confidence: number;        // 0-100
   timestamp:  Date;
   details?:   string;
+  /** Whether this result came from the demo fallback (offline) vs live analysis. */
+  isDemoFallback?: boolean;
 }
 
 export interface ChatMessage {
@@ -109,7 +111,7 @@ export const AI_QA_PAIRS: QAPair[] = [
   {
     pattern: /shared|gave|told|disclosed|already/i,
     response:
-      '🚨 If you\'ve already shared sensitive information:\n1. Change your password immediately on the real website\n2. Call your bank right away to freeze your account if financial info was shared\n3. Enable two-factor authentication on your accounts\n4. Monitor your bank statements for unusual transactions\n5. Report the incident to your local cybercrime authority\n\nDon\'t panic — act quickly and you can minimize the damage.',
+      "\u{1F6A8} If you've already shared sensitive information:\n1. Change your password immediately on the real website\n2. Call your bank right away to freeze your account if financial info was shared\n3. Enable two-factor authentication on your accounts\n4. Monitor your bank statements for unusual transactions\n5. Report the incident to your local cybercrime authority\n\nDon't panic \u2014 act quickly and you can minimize the damage.",
   },
 ];
 
@@ -148,11 +150,114 @@ export const SAFETY_TIPS_UR = [
   'شک ہو تو براہ راست سرکاری نمبر پر کال کریں',
 ];
 
-// ── Mock scan result generator ───────────────────────────────
-export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'timestamp'> {
-  const c = content.toLowerCase();
+// ═════════════════════════════════════════════════════════════
+//  DEMO FALLBACK — Offline analysis when backend is unreachable
+//
+//  This is clearly separated from live backend analysis.
+//  Every result is marked with `isDemoFallback: true`.
+//  Deterministic: same input always produces the same output.
+//  Used only when the backend /api/analyze endpoint is down.
+// ═════════════════════════════════════════════════════════════
 
-  // Simple heuristic for demo purposes
+/**
+ * Deterministic demo scenarios for common Pakistani phishing patterns.
+ * Each scenario matches a specific real-world scam type.
+ */
+interface DemoScenario {
+  /** Pattern that triggers this scenario */
+  match:    RegExp;
+  result:   Omit<ScanResult, 'id' | 'timestamp' | 'content' | 'isDemoFallback'>;
+}
+
+const DEMO_SCENARIOS: DemoScenario[] = [
+  {
+    // Scenario 1: Fake bank warning
+    match: /\b(hbl|meezan|allied|mcb|ubl|bank alflah|faysal bank|standard chartered)\b.*\b(suspended|blocked|verify|update|confirm|frozen|restrict)/i,
+    result: {
+      type:       'sms',
+      risk:       'dangerous',
+      confidence: 92,
+      details:    '[Demo] This matches a common bank impersonation scam. Real banks in Pakistan never ask you to verify your account via SMS link. Call your bank directly using the number on your card.',
+    },
+  },
+  {
+    // Scenario 2: Fake government / BISP message
+    match: /\b(benazir|bisp|ehsaas|8171|government.*fund|wazir.*e.*azam|pakistan.*government)\b.*\b(prize|money|qist|payment|fund|nikli|aa gayi|mil gayi)/i,
+    result: {
+      type:       'sms',
+      risk:       'dangerous',
+      confidence: 88,
+      details:    '[Demo] This matches a fake government programme scam. BISP/Ehsaas never sends unsolicited "you won money" messages. Visit 8171.bisp.gov.pk directly to check eligibility.',
+    },
+  },
+  {
+    // Scenario 3: Suspicious delivery link
+    match: /\b(parcel|delivery|package|courier|tracking|tcs|leopards|dhl|fedex)\b.*\b(click|link|verify|confirm|update|bit\.ly|tinyurl|\.xyz|\.tk)/i,
+    result: {
+      type:       'sms',
+      risk:       'suspicious',
+      confidence: 74,
+      details:    '[Demo] This looks like a delivery tracking scam. Always go to the courier\'s official website directly and enter your tracking number there — never click SMS links.',
+    },
+  },
+  {
+    // Scenario 4: OTP request scam
+    match: /\b(otp|pin|password|code|verification)\b.*\b(send|share|reply|forward|bhej|bhejein|share karein)/i,
+    result: {
+      type:       'sms',
+      risk:       'dangerous',
+      confidence: 95,
+      details:    '[Demo] This is asking you to share an OTP or code. No legitimate service ever asks you to send your OTP to someone. This is always a scam — block the sender.',
+    },
+  },
+  {
+    // Scenario 5: Legitimate transactional message
+    match: /\b(transaction|spent|received|debited|credited|balance)\b.*\b(pkr|rs\.?|rupees|account)\b/i,
+    result: {
+      type:       'sms',
+      risk:       'safe',
+      confidence: 90,
+      details:    '[Demo] This appears to be a standard bank transaction notification. These are normally legitimate. Verify the sender number matches your bank\'s official SMS number.',
+    },
+  },
+];
+
+/**
+ * Infer content type for the demo fallback.
+ */
+function inferDemoType(content: string): ScanResult['type'] {
+  const c = content.toLowerCase().trim();
+  if (c.startsWith('http://') || c.startsWith('https://') || /^[\w-]+\.[a-z]{2,}/i.test(c)) return 'url';
+  if (c.includes('@') && !c.startsWith('http')) return 'email';
+  if (/^\+?[\d\s\-()]+$/.test(content.trim())) return 'phone';
+  return 'sms';
+}
+
+/**
+ * Demo fallback scanner — runs entirely on-device.
+ *
+ * Called when the backend is unavailable.  Checks input against
+ * known Pakistani phishing patterns and falls back to a basic
+ * keyword heuristic if no scenario matches.
+ *
+ * Every result has `isDemoFallback: true`.
+ */
+export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'timestamp'> {
+  const lower = content.toLowerCase();
+
+  // ── Check deterministic demo scenarios first ──────────────
+  for (const scenario of DEMO_SCENARIOS) {
+    if (scenario.match.test(content)) {
+      return {
+        ...scenario.result,
+        content,
+        type:            scenario.result.type,
+        isDemoFallback:  true,
+      };
+    }
+  }
+
+  // ── Generic keyword heuristic (no scenario matched) ───────
   const dangerSigns = [
     'verify', 'suspended', 'urgent', 'click here', 'login', 'secure-',
     '.xyz', '.tk', '.ml', 'bit.ly', 'tinyurl', 'account', 'update now',
@@ -162,19 +267,35 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
     'unusual', 'alert', 'notice', '?ref=', '&utm_',
   ];
 
-  const dangerScore    = dangerSigns.filter(s => c.includes(s)).length;
-  const suspiciousScore = suspiciousSigns.filter(s => c.includes(s)).length;
-
-  let type: ScanResult['type'] = 'url';
-  if (c.includes('@') && !c.startsWith('http')) type = 'email';
-  else if (/^\+?[\d\s\-()]+$/.test(content.trim()))   type = 'phone';
-  else if (!c.startsWith('http'))                      type = 'sms';
+  const dangerScore    = dangerSigns.filter(s => lower.includes(s)).length;
+  const suspiciousScore = suspiciousSigns.filter(s => lower.includes(s)).length;
+  const type           = inferDemoType(content);
 
   if (dangerScore >= 2) {
-    return { content, type, risk: 'dangerous', confidence: Math.min(95, 70 + dangerScore * 5), details: 'Multiple high-risk indicators detected in this content.' };
-  } else if (dangerScore === 1 || suspiciousScore >= 2) {
-    return { content, type, risk: 'suspicious', confidence: Math.min(85, 55 + (dangerScore + suspiciousScore) * 5), details: 'Some suspicious characteristics found. Exercise caution.' };
-  } else {
-    return { content, type, risk: 'safe', confidence: Math.max(88, 100 - suspiciousScore * 5), details: 'No significant phishing indicators detected.' };
+    return {
+      content, type,
+      risk:       'dangerous',
+      confidence: Math.min(95, 70 + dangerScore * 5),
+      details:    '[Demo] Multiple high-risk indicators detected in this content.',
+      isDemoFallback: true,
+    };
   }
+
+  if (dangerScore === 1 || suspiciousScore >= 2) {
+    return {
+      content, type,
+      risk:       'suspicious',
+      confidence: Math.min(85, 55 + (dangerScore + suspiciousScore) * 5),
+      details:    '[Demo] Some suspicious characteristics found. Exercise caution.',
+      isDemoFallback: true,
+    };
+  }
+
+  return {
+    content, type,
+    risk:       'safe',
+    confidence: Math.max(88, 100 - suspiciousScore * 5),
+    details:    '[Demo] No significant phishing indicators detected.',
+    isDemoFallback: true,
+  };
 }

@@ -7,41 +7,253 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { analyzeWithRules, extractDomain, isUrlShortener, checkLookalike, hasSuspiciousTld, isTrustedDomain } = require('../src/engine/rules');
-const { redactSensitive, containsSensitiveData } = require('../src/engine/redact');
+const { redactSensitive, containsSensitiveData, MASK } = require('../src/engine/redact');
 const { validateLlmOutput } = require('../src/engine/llm');
 const { combineResults } = require('../src/engine/combine');
 
 // ═════════════════════════════════════════════════════════════
-//  1. Redaction tests
+//  1. OTP masking
 // ═════════════════════════════════════════════════════════════
 
-describe('redactSensitive', () => {
-  it('redacts OTP values', () => {
+describe('redactSensitive — OTP masking', () => {
+  it('masks "OTP: 839201" → "OTP: ******"', () => {
+    const result = redactSensitive('OTP: 839201');
+    assert.ok(!result.includes('839201'), `Original OTP still present: ${result}`);
+    assert.ok(result.includes(MASK), `Mask not found in: ${result}`);
+    assert.ok(result.toLowerCase().includes('otp'), 'Keyword lost');
+  });
+
+  it('masks "Your OTP is 123456"', () => {
     const result = redactSensitive('Your OTP is 123456');
     assert.ok(!result.includes('123456'));
-    assert.ok(result.includes('[REDACTED]'));
+    assert.ok(result.includes(MASK));
   });
 
-  it('redacts PIN values', () => {
+  it('masks "OTP = 9944" with equals separator', () => {
+    const result = redactSensitive('OTP = 9944');
+    assert.ok(!result.includes('9944'));
+  });
+
+  it('masks "verification code is 556677"', () => {
+    const result = redactSensitive('Your verification code is 556677');
+    assert.ok(!result.includes('556677'));
+    assert.ok(result.includes(MASK));
+  });
+
+  it('masks "one-time code: 482910"', () => {
+    const result = redactSensitive('Your one-time code: 482910');
+    assert.ok(!result.includes('482910'));
+  });
+
+  it('masks case-insensitive "otp: 1234"', () => {
+    const result = redactSensitive('otp: 1234');
+    assert.ok(!result.includes('1234'));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  2. PIN masking
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — PIN masking', () => {
+  it('masks "pin: 4321"', () => {
     const result = redactSensitive('Enter your pin: 4321');
     assert.ok(!result.includes('4321'));
+    assert.ok(result.includes(MASK));
   });
 
-  it('redacts CNIC numbers', () => {
-    const result = redactSensitive('My CNIC is 35202-1234567-1');
-    assert.ok(result.includes('[CNIC-REDACTED]'));
+  it('masks "PIN is 0000"', () => {
+    const result = redactSensitive('Your PIN is 0000');
+    assert.ok(!result.includes('0000'));
   });
 
-  it('redacts credit card numbers', () => {
-    const result = redactSensitive('Card: 4111 1111 1111 1111');
-    assert.ok(result.includes('[CARD-REDACTED]'));
+  it('masks "passcode: ab12cd" (non-numeric password)', () => {
+    const result = redactSensitive('passcode: ab12cd');
+    assert.ok(!result.includes('ab12cd'));
+    assert.ok(result.includes(MASK));
   });
 
-  it('does not redact safe content', () => {
+  it('masks CVV "cvv: 321"', () => {
+    const result = redactSensitive('Enter cvv: 321');
+    assert.ok(!result.includes('321'));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  3. Multiple sensitive values
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — multiple sensitive values', () => {
+  it('masks both OTP and PIN in the same text', () => {
+    const result = redactSensitive('Your OTP is 839201 and your PIN is 4321');
+    assert.ok(!result.includes('839201'), 'OTP not masked');
+    assert.ok(!result.includes('4321'), 'PIN not masked');
+  });
+
+  it('masks OTP and CNIC together', () => {
+    const result = redactSensitive('OTP: 123456, CNIC: 35202-1234567-1');
+    assert.ok(!result.includes('123456'), 'OTP not masked');
+    assert.ok(!result.includes('35202-1234567-1'), 'CNIC not masked');
+    assert.ok(result.includes(MASK));
+  });
+
+  it('masks credit card and password together', () => {
+    const result = redactSensitive('Card: 4111 1111 1111 1111, password: hunter2');
+    assert.ok(!result.includes('4111'));
+    assert.ok(!result.includes('hunter2'));
+  });
+
+  it('masks three OTP values in one message', () => {
+    const text = 'OTP: 111111. Another code: 222222. Verify token: 333333';
+    const result = redactSensitive(text);
+    assert.ok(!result.includes('111111'));
+    assert.ok(!result.includes('222222'));
+    assert.ok(!result.includes('333333'));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  4. URLs (should NOT be redacted)
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — URLs', () => {
+  it('does not redact a plain URL', () => {
     const result = redactSensitive('Check this link https://google.com');
     assert.ok(result.includes('google.com'));
   });
+
+  it('does not redact a suspicious URL', () => {
+    const url = 'https://paypal-secure-login.xyz/verify';
+    const result = redactSensitive(url);
+    assert.ok(result.includes(url), 'URL was incorrectly modified');
+  });
+
+  it('does not redact URL shortener links', () => {
+    const result = redactSensitive('Click here: https://bit.ly/h8l-update');
+    assert.ok(result.includes('bit.ly'));
+  });
+
+  it('preserves URL alongside masked OTP', () => {
+    const text = 'Visit https://fake-bank.xyz/login and enter OTP: 123456';
+    const result = redactSensitive(text);
+    assert.ok(result.includes('fake-bank.xyz'), 'URL lost');
+    assert.ok(!result.includes('123456'), 'OTP not masked');
+  });
 });
+
+// ═════════════════════════════════════════════════════════════
+//  5. Roman Urdu scam text
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — Roman Urdu scam text', () => {
+  it('preserves Roman Urdu scam message (no OTP)', () => {
+    const text = 'Ap ko lottery nikli hai! Abhi rabta karein aur inaam hasil karein.';
+    const result = redactSensitive(text);
+    assert.equal(result, text, 'Non-sensitive text was modified');
+  });
+
+  it('masks OTP in Roman Urdu context', () => {
+    const text = 'Apna OTP 567890 share karein verification ke liye';
+    const result = redactSensitive(text);
+    assert.ok(!result.includes('567890'), 'OTP not masked in Urdu text');
+    assert.ok(result.includes('OTP'));
+  });
+
+  it('preserves BISP scam text without sensitive data', () => {
+    const text = 'Benazir Income Support Programme se apki qist aa gayi hai. 8171 par SMS karein.';
+    const result = redactSensitive(text);
+    assert.equal(result, text);
+  });
+
+  it('masks CNIC in Urdu/Roman context', () => {
+    const text = 'Apna CNIC 42101-7654321-0 bhejain';
+    const result = redactSensitive(text);
+    assert.ok(!result.includes('42101-7654321-0'));
+    assert.ok(result.includes(MASK));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  6. Ordinary safe messages
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — ordinary safe messages', () => {
+  it('does not modify "Hello, how are you?"', () => {
+    const text = 'Hello, how are you?';
+    assert.equal(redactSensitive(text), text);
+  });
+
+  it('does not modify a plain URL', () => {
+    const text = 'https://www.google.com/search?q=weather';
+    assert.equal(redactSensitive(text), text);
+  });
+
+  it('does not modify a short safe sentence', () => {
+    const text = 'The meeting is at 3pm tomorrow.';
+    assert.equal(redactSensitive(text), text);
+  });
+
+  it('does not flag short numbers without keywords', () => {
+    const text = 'Call me at 555-1234';
+    const result = redactSensitive(text);
+    assert.ok(result.includes('555-1234'), 'Non-sensitive number was masked');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  7. Malformed input
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — malformed input', () => {
+  it('handles null gracefully', () => {
+    assert.equal(redactSensitive(null), '');
+  });
+
+  it('handles undefined gracefully', () => {
+    assert.equal(redactSensitive(undefined), '');
+  });
+
+  it('handles number input gracefully', () => {
+    assert.equal(redactSensitive(42), '');
+  });
+
+  it('handles object input gracefully', () => {
+    assert.equal(redactSensitive({ otp: '123' }), '');
+  });
+
+  it('handles text with only digits (no keyword)', () => {
+    const result = redactSensitive('123456');
+    // No keyword context → digits stay (conservative approach)
+    assert.equal(result, '123456');
+  });
+
+  it('handles text with special characters', () => {
+    const text = 'OTP: 123456 <script>alert("xss")</script>';
+    const result = redactSensitive(text);
+    assert.ok(!result.includes('123456'));
+    // Script tag is preserved (redaction is not sanitization)
+    assert.ok(result.includes('<script>'));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  8. Empty input
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — empty input', () => {
+  it('returns empty string for empty string input', () => {
+    assert.equal(redactSensitive(''), '');
+  });
+
+  it('returns empty string for whitespace-only input', () => {
+    const result = redactSensitive('   ');
+    assert.equal(result, '   ');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  9. containsSensitiveData detection
+// ═════════════════════════════════════════════════════════════
 
 describe('containsSensitiveData', () => {
   it('detects OTP patterns', () => {
@@ -52,13 +264,63 @@ describe('containsSensitiveData', () => {
     assert.ok(containsSensitiveData('CNIC 35202-1234567-1'));
   });
 
+  it('detects credit card numbers', () => {
+    assert.ok(containsSensitiveData('Card: 4111 1111 1111 1111'));
+  });
+
+  it('detects password key-value pairs', () => {
+    assert.ok(containsSensitiveData('password: mySecret123'));
+  });
+
   it('returns false for safe text', () => {
     assert.ok(!containsSensitiveData('Hello world'));
+  });
+
+  it('returns false for empty input', () => {
+    assert.ok(!containsSensitiveData(''));
+  });
+
+  it('returns false for null', () => {
+    assert.ok(!containsSensitiveData(null));
+  });
+
+  it('is deterministic — same result on repeated calls', () => {
+    const text = 'Your OTP is 998877';
+    const r1 = containsSensitiveData(text);
+    const r2 = containsSensitiveData(text);
+    const r3 = containsSensitiveData(text);
+    assert.equal(r1, r2);
+    assert.equal(r2, r3);
+    assert.ok(r1);
+  });
+
+  it('returns false for URL without secrets', () => {
+    assert.ok(!containsSensitiveData('https://google.com'));
   });
 });
 
 // ═════════════════════════════════════════════════════════════
-//  2. Rule engine tests
+//  10. Redaction determinism
+// ═════════════════════════════════════════════════════════════
+
+describe('redactSensitive — determinism', () => {
+  it('produces identical output for same input (idempotent)', () => {
+    const text = 'OTP: 839201, PIN: 4321, CNIC: 35202-1234567-1';
+    const r1 = redactSensitive(text);
+    const r2 = redactSensitive(text);
+    assert.equal(r1, r2);
+  });
+
+  it('double-redaction does not change already-redacted text', () => {
+    const text = 'OTP: 839201';
+    const once = redactSensitive(text);
+    const twice = redactSensitive(once);
+    assert.equal(once, twice, `Double redaction changed output: "${once}" → "${twice}"`);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════
+//  11. Rule engine tests
 // ═════════════════════════════════════════════════════════════
 
 describe('extractDomain', () => {
@@ -183,7 +445,7 @@ describe('analyzeWithRules — full analysis', () => {
 });
 
 // ═════════════════════════════════════════════════════════════
-//  3. LLM validation tests
+//  12. LLM validation tests
 // ═════════════════════════════════════════════════════════════
 
 describe('validateLlmOutput', () => {
@@ -226,7 +488,7 @@ describe('validateLlmOutput', () => {
 });
 
 // ═════════════════════════════════════════════════════════════
-//  4. Combination logic tests
+//  13. Combination logic tests
 // ═════════════════════════════════════════════════════════════
 
 describe('combineResults', () => {

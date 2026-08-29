@@ -1,10 +1,19 @@
 // ─────────────────────────────────────────────────────────────
 //  API Service — Connects frontend to backend /api/analyze
-//  Falls back to local mock data when backend is unavailable.
+//
+//  Flow:
+//    1. Raw text enters the scanner
+//    2. Client-side redaction strips OTP/PIN/passwords/etc.
+//    3. Redacted text is sent to the backend API
+//    4. Backend runs rule engine + optional LLM on redacted text
+//    5. Original sensitive values NEVER leave the device
+//
+//  When backend is unavailable, falls back to local demo engine.
 // ─────────────────────────────────────────────────────────────
 
 import { Platform } from 'react-native';
 import type { ScanResult } from '../constants/mockData';
+import { redactSensitive, inferContentType } from './redact';
 
 // ── Configuration ────────────────────────────────────────────
 // Use the machine's LAN IP for physical device testing.
@@ -35,12 +44,24 @@ export interface AnalyzeResponse {
 
 /**
  * Call the backend analyze endpoint.
+ *
+ * **Privacy**: The input is redacted client-side before being
+ * sent over the wire.  OTPs, PINs, passwords, CNICs, and credit
+ * card numbers are masked so they never reach the backend or any
+ * external LLM.
+ *
  * Returns null if the backend is unavailable.
  */
 export async function analyzeContent(
   input: string,
-  inputType: 'text' | 'link' | 'message'
+  inputType?: 'text' | 'link' | 'message'
 ): Promise<AnalyzeResponse | null> {
+  // ── Client-side redaction: strip secrets before submission ──
+  const redactedInput = redactSensitive(input);
+
+  // Auto-detect type if not explicitly provided
+  const resolvedType = inputType ?? inferContentType(input);
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ANALYZE_TIMEOUT);
 
@@ -49,8 +70,8 @@ export async function analyzeContent(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        input,
-        input_type: inputType,
+        input: redactedInput,     // ← redacted, not raw
+        input_type: resolvedType,
       }),
       signal: controller.signal,
     });
@@ -109,28 +130,17 @@ function mapVerdict(verdict: string): ScanResult['risk'] {
 }
 
 /**
- * Infer the scan type from input content (for frontend display).
- */
-function inferType(input: string): ScanResult['type'] {
-  const lower = input.toLowerCase().trim();
-  if (lower.startsWith('http://') || lower.startsWith('https://') || /^[\w-]+\.[a-z]{2,}/i.test(lower)) {
-    return 'url';
-  }
-  if (lower.includes('@') && !lower.startsWith('http')) return 'email';
-  if (/^\+?[\d\s\-()]+$/.test(input.trim())) return 'phone';
-  return 'sms';
-}
-
-/**
- * Convert an API response + input into a ScanResult for the frontend.
+ * Convert an API response + original input into a ScanResult.
+ * The original (un-redacted) input is stored for display so the
+ * user sees what they pasted, not the masked version.
  */
 export function toScanResult(
-  input: string,
+  originalInput: string,
   response: AnalyzeResponse
 ): Omit<ScanResult, 'id' | 'timestamp'> {
   return {
-    content:    input,
-    type:       inferType(input),
+    content:    originalInput,
+    type:       inferContentType(originalInput),
     risk:       mapVerdict(response.verdict),
     confidence: response.risk_score,
     details:    response.explanation_en,
