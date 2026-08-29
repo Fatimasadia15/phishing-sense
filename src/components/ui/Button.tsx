@@ -1,0 +1,154 @@
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  View,
+} from 'react-native';
+import { useTheme } from '../../theme/ThemeContext';
+import { useApp } from '../../store/AppContext';
+
+// ─────────────────────────────────────────────────────────────
+//  Button Component
+//  Elderly-friendly: min 52px height, high contrast text
+// ─────────────────────────────────────────────────────────────
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'soft';
+type Size    = 'sm' | 'md' | 'lg';
+
+interface ButtonProps {
+  onPress:    () => void;
+  label:      string;
+  variant?:   Variant;
+  size?:      Size;
+  disabled?:  boolean;
+  loading?:   boolean;
+  icon?:      React.ReactNode;
+  iconRight?: React.ReactNode;
+  fullWidth?: boolean;
+  style?:     ViewStyle;
+  textStyle?: TextStyle;
+  accessibilityLabel?: string;
+}
+
+export function Button({
+  onPress,
+  label,
+  variant   = 'primary',
+  size      = 'md',
+  disabled  = false,
+  loading   = false,
+  icon,
+  iconRight,
+  fullWidth = false,
+  style,
+  textStyle,
+  accessibilityLabel,
+}: ButtonProps) {
+  const { theme } = useTheme();
+  const { textSize } = useApp();
+  const isLarge = textSize === 'large';
+
+  const heights: Record<Size, number> = {
+    sm: 44,
+    md: isLarge ? 60 : 52,
+    lg: isLarge ? 68 : 60,
+  };
+
+  const fontSizes: Record<Size, number> = {
+    sm: isLarge ? 15 : 13,
+    md: isLarge ? 18 : 16,
+    lg: isLarge ? 20 : 18,
+  };
+
+  const paddings: Record<Size, number> = { sm: 16, md: 24, lg: 32 };
+
+  const getColors = (): { bg: string; text: string; border?: string } => {
+    if (disabled) return { bg: theme.colors.border, text: theme.colors.textDisabled };
+    switch (variant) {
+      case 'primary':
+        return { bg: theme.colors.primary, text: '#FFFFFF' };
+      case 'secondary':
+        return { bg: theme.colors.secondary, text: '#FFFFFF' };
+      case 'ghost':
+        return { bg: 'transparent', text: theme.colors.primary, border: theme.colors.border };
+      case 'danger':
+        return { bg: theme.colors.dangerDark, text: '#FFFFFF' };
+      case 'soft':
+        return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark };
+    }
+  };
+
+  const { bg, text, border } = getColors();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.82}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || label}
+      accessibilityState={{ disabled: disabled || loading }}
+      style={[
+        styles.base,
+        {
+          height:           heights[size],
+          backgroundColor:  bg,
+          paddingHorizontal: paddings[size],
+          borderRadius:     theme.radius.pill,
+          borderWidth:      border ? 1.5 : 0,
+          borderColor:      border,
+          width:            fullWidth ? '100%' : undefined,
+          ...theme.shadows.sm,
+        },
+        (variant === 'ghost') && { shadowOpacity: 0 },
+        disabled && { shadowOpacity: 0 },
+        style,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator color={text} size="small" />
+      ) : (
+        <>
+          {icon && <View style={styles.iconLeft}>{icon}</View>}
+          <Text
+            style={[
+              styles.label,
+              {
+                color:      text,
+                fontSize:   fontSizes[size],
+                fontFamily: theme.fonts.bodySemibold,
+              },
+              textStyle,
+            ]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          {iconRight && <View style={styles.iconRight}>{iconRight}</View>}
+        </>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  base: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'center',
+    overflow:       'hidden',
+  },
+  label: {
+    letterSpacing: 0.2,
+  },
+  iconLeft: {
+    marginEnd: 8,
+  },
+  iconRight: {
+    marginStart: 8,
+  },
+});

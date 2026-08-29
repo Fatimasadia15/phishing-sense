@@ -1,0 +1,247 @@
+{
+  "app": {
+    "name": "Phishing Sense",
+    "tagline": "Stay Safe Online"
+  },
+  "common": {
+    "continue": "Continue",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "tryAgain": "Try Again",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "signOut": "Sign Out"
+  },
+  "onboarding": {
+    "slide1": {
+      "title": "Stay Safe Online",
+      "subtitle": "Phishing Sense helps you identify scams, fake links, and suspicious messages before they can harm you."
+    },
+    "slide2": {
+      "title": "Scan Anything",
+      "subtitle": "Paste a URL, email, SMS, or message and get an instant safety analysis in seconds."
+    },
+    "slide3": {
+      "title": "Your AI Guardian",
+      "subtitle": "Sense AI is always ready to answer your questions and guide you through any suspicious situation."
+    },
+    "getStarted": "Get Started",
+    "signIn": "Already have an account? Sign In"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to your account",
+      "email": "Email Address",
+      "password": "Password",
+      "forgotPassword": "Forgot Password?",
+      "signIn": "Sign In",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create Account",
+      "emailPlaceholder": "you@example.com",
+      "passwordPlaceholder": "Your password"
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Join Phishing Sense today",
+      "fullName": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "terms": "I agree to the Terms & Privacy Policy",
+      "createAccount": "Create Account",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "namePlaceholder": "Your full name",
+      "emailPlaceholder": "you@example.com",
+      "passwordPlaceholder": "Choose a strong password",
+      "confirmPlaceholder": "Repeat your password",
+      "passwordStrength": {
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      }
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email to receive a reset link",
+      "email": "Email Address",
+      "emailPlaceholder": "you@example.com",
+      "sendLink": "Send Reset Link",
+      "backToLogin": "Back to Sign In",
+      "successTitle": "Check Your Email",
+      "successMessage": "We've sent a password reset link to {{email}}. Check your inbox (and spam folder) in a few minutes."
+    },
+    "validation": {
+      "required": "This field is required",
+      "invalidEmail": "Please enter a valid email address",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "nameRequired": "Please enter your full name",
+      "termsRequired": "Please accept the terms to continue"
+    }
+  },
+  "home": {
+    "greeting": "Hello, {{name}} 👋",
+    "greetingMorning": "Good Morning, {{name}} ☀️",
+    "greetingAfternoon": "Good Afternoon, {{name}} 🌤",
+    "greetingEvening": "Good Evening, {{name}} 🌙",
+    "protectionStatus": {
+      "protected": "You're Protected",
+      "protectedSub": "No threats detected today",
+      "atRisk": "Stay Alert",
+      "atRiskSub": "Review your recent scans"
+    },
+    "quickActions": "Quick Actions",
+    "scanUrl": "Scan URL",
+    "scanEmail": "Scan Email",
+    "scanSms": "Scan SMS",
+    "scanCall": "Scan Call",
+    "recentScans": "Recent Scans",
+    "noRecentScans": "No scans yet. Scan something to get started!",
+    "seeAll": "See All",
+    "panicMode": "Panic Mode",
+    "panicModeSub": "Being scammed right now?"
+  },
+  "scan": {
+    "title": "Scan Content",
+    "subtitle": "Paste a URL, email, message or phone number",
+    "inputLabel": "Content to Scan",
+    "inputPlaceholder": "Paste URL, email text, SMS or phone number here...",
+    "scanButton": "Scan Now",
+    "clearButton": "Clear",
+    "scanning": "Analyzing...",
+    "tips": {
+      "title": "Safety Tips",
+      "tip1": "Never share OTPs, PINs or passwords over the phone",
+      "tip2": "Banks never ask for your full account details via SMS",
+      "tip3": "Check URLs carefully before clicking — look for misspellings",
+      "tip4": "If in doubt, call the official number directly"
+    },
+    "result": {
+      "safe": {
+        "label": "Safe",
+        "title": "Looks Safe! ✓",
+        "message": "This content does not show signs of phishing or scams."
+      },
+      "suspicious": {
+        "label": "Suspicious",
+        "title": "Be Careful ⚠️",
+        "message": "This content has some suspicious characteristics. Proceed with caution."
+      },
+      "dangerous": {
+        "label": "Dangerous",
+        "title": "Danger! 🚨",
+        "message": "This content is likely a phishing attempt or scam. Do not interact with it."
+      },
+      "confidence": "Confidence: {{value}}%",
+      "scanAgain": "Scan Something Else",
+      "details": "Why this result?"
+    }
+  },
+  "senseAi": {
+    "title": "Sense AI",
+    "subtitle": "Ask me anything about online safety",
+    "placeholder": "Ask about a link, message, or scam...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "suggestedTitle": "Suggested Questions",
+    "suggestions": [
+      "Is this link safe to click?",
+      "How do I spot a phishing email?",
+      "What should I do if I shared my password?",
+      "Is this SMS from my bank real?",
+      "How do scammers get my number?"
+    ],
+    "greeting": "Hi! I'm Sense AI 👋 I'm here to help you stay safe online. What would you like to know?"
+  },
+  "panic": {
+    "title": "You're Safe. Take a Breath.",
+    "subtitle": "Follow these steps right now:",
+    "step1": {
+      "num": "1",
+      "title": "Stop sharing information",
+      "detail": "Hang up immediately. Do not share any OTPs, passwords, or personal details."
+    },
+    "step2": {
+      "num": "2",
+      "title": "Block the number or sender",
+      "detail": "Block the phone number, email, or account that contacted you."
+    },
+    "step3": {
+      "num": "3",
+      "title": "Call your bank",
+      "detail": "If you shared financial information, call your bank's official helpline immediately."
+    },
+    "step4": {
+      "num": "4",
+      "title": "Report the scam",
+      "detail": "Report it to your local cybercrime authority or consumer protection agency."
+    },
+    "callForHelp": "Call for Help",
+    "imSafeNow": "I'm Safe Now",
+    "reminder": "You are not alone. Scammers are sophisticated — it's not your fault."
+  },
+  "profile": {
+    "title": "Profile",
+    "stats": {
+      "scansToday": "Scans Today",
+      "totalScans": "Total Scans",
+      "threatsBlocked": "Threats Blocked"
+    },
+    "menu": {
+      "settings": "Settings",
+      "language": "Language",
+      "help": "Help & Support",
+      "about": "About Phishing Sense",
+      "privacy": "Privacy Policy"
+    },
+    "signOut": "Sign Out",
+    "signOutConfirm": "Are you sure you want to sign out?"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "themeSystem": "System Default",
+      "textSize": "Text Size",
+      "textNormal": "Normal",
+      "textLarge": "Large (Recommended for older adults)"
+    },
+    "language": {
+      "title": "Language",
+      "english": "English",
+      "urdu": "اردو (Urdu)",
+      "changeNote": "Changing language will restart the app to apply the new layout direction."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "push": "Push Notifications",
+      "pushSub": "Get alerts about new threats and tips"
+    },
+    "about": {
+      "version": "Version",
+      "build": "Build"
+    }
+  },
+  "languages": {
+    "en": "English",
+    "ur": "اردو"
+  }
+}
