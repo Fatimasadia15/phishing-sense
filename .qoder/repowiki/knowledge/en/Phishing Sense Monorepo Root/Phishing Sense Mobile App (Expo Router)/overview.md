@@ -1,0 +1,1 @@
+React Native/Expo mobile app for phishing detection, featuring auth-gated routing, a tabbed main shell, mock authentication and AI chat state, theme and i18n contexts, and reusable UI components.

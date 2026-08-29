@@ -1,0 +1,5 @@
+- Engine modules expose pure functions via `module.exports` and are imported by routes rather than sharing mutable state.
+- Risk scoring accumulates numeric points per heuristic hit and maps the total to a 0–100 score with a three-tier verdict (SAFE/SUSPICIOUS/DANGEROUS) at the end of each analysis pass.
+- External or optional services (LLM calls) are wrapped in try/catch so failures degrade gracefully without aborting the rule-based result.
+- Environment-driven configuration is read from `process.env` with sensible defaults (e.g. `PORT || '3000'`, `MAX_INPUT_LENGTH || '5000'`) instead of hard-coded constants.
+- Request validation is implemented as reusable Express middleware that returns structured `{ error }` JSON responses on 400 before reaching the route handler.

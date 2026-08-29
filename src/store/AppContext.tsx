@@ -14,6 +14,7 @@ import {
   AI_QA_PAIRS,
   AI_DEFAULT_RESPONSE,
 } from '../constants/mockData';
+import { analyzeContent, toScanResult } from '../services/api';
 
 // ─────────────────────────────────────────────────────────────
 //  Auth Context — mock authentication state
@@ -91,7 +92,7 @@ export type TextSizePreference = 'normal' | 'large';
 interface AppContextValue {
   scanHistory:       ScanResult[];
   stats:             { scansToday: number; totalScans: number; threatsBlocked: number };
-  addScan:           (content: string) => ScanResult;
+  addScan:           (content: string) => Promise<ScanResult>;
   chatMessages:      ChatMessage[];
   sendChatMessage:   (text: string) => void;
   isChatThinking:    boolean;
@@ -122,8 +123,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [textSize, setTextSizeState]    = useState<TextSizePreference>('normal');
   const [notificationsOn, setNotificationsOn] = useState(true);
 
-  const addScan = useCallback((content: string): ScanResult => {
-    const raw  = mockScanContent(content);
+  const addScan = useCallback(async (content: string): Promise<ScanResult> => {
+    let raw: Omit<ScanResult, 'id' | 'timestamp'>;
+
+    // Try backend API first
+    try {
+      const apiResponse = await analyzeContent(content, 'text');
+      if (apiResponse) {
+        raw = toScanResult(content, apiResponse);
+      } else {
+        // Backend unavailable — fall back to local mock engine
+        raw = mockScanContent(content);
+      }
+    } catch {
+      // Any unexpected error — fall back to local mock engine
+      raw = mockScanContent(content);
+    }
+
     const scan: ScanResult = { ...raw, id: genId(), timestamp: new Date() };
     setScanHistory(prev => [scan, ...prev].slice(0, 50));
     setStats(prev => ({

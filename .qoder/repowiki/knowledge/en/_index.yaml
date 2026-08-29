@@ -1,0 +1,45 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: main
+nodes_managed: true
+exported_at: "2026-08-29T19:44:49Z"
+modules:
+    "":
+        dir_name: Phishing Sense Monorepo Root
+        title: Phishing Sense Monorepo Root
+        scope:
+            - package.json
+            - app.json
+            - tsconfig.json
+            - index.ts
+            - App.tsx
+            - AGENTS.md
+            - CLAUDE.md
+            - LICENSE
+            - package-lock.json
+        source_files: []
+        children:
+            - mobile_app
+            - server
+        depends_on: []
+        related_to: []
+    mobile_app:
+        dir_name: Phishing Sense Mobile App (Expo Router)
+        title: Phishing Sense Mobile App (Expo Router)
+        scope:
+            - app/
+            - src/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    server:
+        dir_name: Phishing Sense Backend API & Risk Analysis Engine
+        title: Phishing Sense Backend API & Risk Analysis Engine
+        scope:
+            - server/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

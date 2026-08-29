@@ -1,0 +1,16 @@
+schema_version: 1
+module_path: ""
+title: Phishing Sense Monorepo Root
+scope:
+    - package.json
+    - app.json
+    - tsconfig.json
+    - index.ts
+    - App.tsx
+    - AGENTS.md
+    - CLAUDE.md
+    - LICENSE
+    - package-lock.json
+source_files: []
+depends_on: []
+related_to: []

@@ -1,0 +1,6 @@
+- Cross-cutting state is exposed as React Context modules that export both a `<XxxProvider>` component and a typed `useXxx()` hook that throws if used outside its provider.
+- Route groups are organized by auth status using Expo Router's parentheses convention: `app/(auth)` for pre-login screens and `app/(app)` for the authenticated tab shell.
+- User preferences (language, theme mode) are persisted to AsyncStorage with explicit keys (`@phishing_sense/language`, `@phishing_sense/theme_mode`) and rehydrated on app start.
+- UI styling is centralized in `src/theme/tokens.ts` (colors, spacing, radius, font sizes, shadows, durations) and consumed through `lightTheme`/`darkTheme` objects rather than inline literals.
+- Mock data and fake async delays are used throughout the store layer (e.g. `setTimeout`-based login/signup/chat responses) so screens can be developed without a backend.
+- Tab bar items use consistent icon wrapping: a rounded `iconWrap` View with a focused background tint and Ionicons sized according to the global `textSize` preference.

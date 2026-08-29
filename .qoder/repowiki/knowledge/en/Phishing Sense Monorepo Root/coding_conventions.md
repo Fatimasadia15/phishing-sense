@@ -1,0 +1,2 @@
+- Each child module owns its own `package.json`, `tsconfig.json`, and entry point rather than sharing a top-level build configuration.
+- TypeScript is configured per child with `jsx: react-jsx` and `moduleResolution: node` to support both Expo and Node environments.

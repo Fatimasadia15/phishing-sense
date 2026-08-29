@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: mobile_app
+title: Phishing Sense Mobile App (Expo Router)
+scope:
+    - app/
+    - src/
+source_files: []
+depends_on: []
+related_to: []

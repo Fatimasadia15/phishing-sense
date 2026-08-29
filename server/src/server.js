@@ -1,0 +1,99 @@
+// ─────────────────────────────────────────────────────────────
+//  Phishing Sense — Backend Server Entry Point
+//  Node.js + Express API for AI-powered risk analysis.
+// ─────────────────────────────────────────────────────────────
+
+// Load environment variables first
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
+const express          = require('express');
+const cors             = require('cors');
+const helmet           = require('helmet');
+const rateLimit        = require('express-rate-limit');
+const { handleAnalyze } = require('./routes/analyze');
+const { validateAnalyzeRequest } = require('./middleware/validate');
+
+const app  = express();
+const PORT = parseInt(process.env.PORT || '3000', 10);
+
+// ── Security middleware ──────────────────────────────────────
+app.use(helmet());
+
+// CORS — allow Expo dev server and production origins
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    const allowed = [
+      'http://localhost:8081',
+      'http://localhost:19006',
+      'http://localhost:19000',
+      'exp://localhost:19000',
+    ];
+    if (allowed.some(a => origin.startsWith(a))) {
+      return callback(null, true);
+    }
+    // In production, add your actual domain here
+    callback(null, true);
+  },
+}));
+
+// ── Rate limiting ────────────────────────────────────────────
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '20', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a moment and try again.' },
+});
+
+// ── Body parsing ─────────────────────────────────────────────
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+
+// ── Health check ─────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'phishing-sense',
+    version: '1.0.0',
+    llm_provider: process.env.LLM_PROVIDER || 'none',
+  });
+});
+
+// ── Main analysis endpoint ──────────────────────────────────
+app.post('/api/analyze', limiter, validateAnalyzeRequest, handleAnalyze);
+
+// ── Root route ──────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'Phishing Sense API',
+    version: '1.0.0',
+    endpoints: {
+      health:  'GET  /api/health',
+      analyze: 'POST /api/analyze',
+    },
+    usage: 'POST to /api/analyze with { "input": "...", "input_type": "text|link|message" }',
+  });
+});
+
+// ── 404 handler ──────────────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Endpoint not found.' });
+});
+
+// ── Global error handler ────────────────────────────────────
+app.use((err, _req, res, _next) => {
+  console.error('[server] Unhandled error:', err.message);
+  res.status(500).json({ error: 'Internal server error.' });
+});
+
+// ── Start ────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`[Phishing Sense] Server running on http://localhost:${PORT}`);
+  console.log(`[Phishing Sense] LLM provider: ${process.env.LLM_PROVIDER || 'none (rules only)'}`);
+  console.log(`[Phishing Sense] Health check: http://localhost:${PORT}/api/health`);
+  console.log(`[Phishing Sense] Analyze: POST http://localhost:${PORT}/api/analyze`);
+});
+
+module.exports = app;

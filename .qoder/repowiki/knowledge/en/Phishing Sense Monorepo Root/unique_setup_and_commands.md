@@ -1,0 +1,1 @@
+The root `package.json` exposes `expo start`, `android`, `ios`, and `web` scripts that launch the mobile app; the server must be started separately from within the `server/` directory using its own npm scripts.

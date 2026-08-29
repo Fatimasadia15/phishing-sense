@@ -1,0 +1,1 @@
+Top-level project root that defines the Phishing Sense workspace containing a React Native/Expo mobile app and an Express.js backend for phishing URL risk analysis.

@@ -1,0 +1,1 @@
+Expo SDK ~52 with expo-router, React Native 0.76, i18next/react-i18next for internationalization on the mobile side; Node/Express on the server side. TypeScript is used across both children via per-module `tsconfig.json` files.

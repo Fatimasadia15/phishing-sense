@@ -1,0 +1,1 @@
+Node.js + Express 4.x with `helmet` for security headers, `cors` configured for Expo dev servers, `express-rate-limit` for request throttling, `dotenv` for environment loading, and an optional OpenAI-compatible chat API (OpenAI, Azure, or local models) gated by `LLM_PROVIDER=none|openai`.

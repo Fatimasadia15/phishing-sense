@@ -1,0 +1,1 @@
+Copy `.env.example` to `.env` and set at minimum `LLM_PROVIDER` (default `none` disables the LLM, leaving only the rule engine). Run with `npm start` (or `npm run dev` for `--watch`). Tests execute via `npm test` which invokes `node --test __tests__/analyze.test.js`.

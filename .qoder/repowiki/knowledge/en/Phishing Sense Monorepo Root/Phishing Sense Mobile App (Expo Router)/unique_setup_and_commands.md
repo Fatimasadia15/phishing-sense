@@ -1,0 +1,1 @@
+The root layout calls `SplashScreen.preventAutoHideAsync()` at module load and only hides it after fonts are loaded AND i18n has been initialized via `initI18n(getSavedLanguage())`; changing between LTR (en) and RTL (ur) triggers `I18nManager.forceRTL` and requires an app restart because of a React Native limitation.

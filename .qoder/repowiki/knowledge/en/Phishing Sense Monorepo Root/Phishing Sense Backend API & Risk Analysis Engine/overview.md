@@ -1,0 +1,1 @@
+Express.js server exposing an /api/analyze endpoint that scores phishing risk via a deterministic rule engine, optional LLM analysis, and result combination.

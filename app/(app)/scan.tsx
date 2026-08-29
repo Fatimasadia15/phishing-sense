@@ -81,8 +81,8 @@ export default function ScanScreen() {
     setResult(null);
     resultOpacity.setValue(0);
     resultSlide.setValue(20);
-    setTimeout(() => {
-      const scanRes = addScan(inputContent);
+    setTimeout(async () => {
+      const scanRes = await addScan(inputContent);
       setResult(scanRes);
       setOrbState('result');
       Animated.parallel([
