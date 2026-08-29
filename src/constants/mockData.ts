@@ -21,9 +21,9 @@ export interface ChatMessage {
 }
 
 export const MOCK_USER = {
-  id:       'mock-user-001',
-  name:     'Ahmed Khan',
-  email:    'ahmed.khan@example.com',
+  id:       'user-001',
+  name:     '',
+  email:    '',
   joinDate: new Date('2024-01-15'),
   avatar:   null as string | null,
 };

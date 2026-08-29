@@ -45,7 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     // Simulate network delay
     await new Promise(r => setTimeout(r, 1200));
-    setUser({ id: MOCK_USER.id, name: MOCK_USER.name, email: email || MOCK_USER.email });
+    const trimmedEmail = email.trim();
+    const extractedName = trimmedEmail ? trimmedEmail.split('@')[0].replace(/[._-]/g, ' ') : '';
+    const formattedName = extractedName ? extractedName.charAt(0).toUpperCase() + extractedName.slice(1) : '';
+    setUser({ id: 'user-001', name: formattedName, email: trimmedEmail });
     setLoading(false);
   }, []);
 
