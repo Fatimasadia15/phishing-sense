@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import { Colors } from '../../theme/tokens';
+import { Colors, shadow } from '../../theme/tokens';
+import { WEB_SCALE } from '../../theme/responsive';
 
 // ─────────────────────────────────────────────────────────────
 //  Sense Orb — Layered AI-Companion Centerpiece
@@ -29,11 +30,11 @@ const SIZES: Record<OrbSize, {
   halo2: number;
   aura: number;
 }> = {
-  xs: { core: 36,  innerGlow: 28,  halo1: 48,  halo2: 60,  aura: 72 },
-  sm: { core: 64,  innerGlow: 50,  halo1: 84,  halo2: 104, aura: 124 },
-  md: { core: 100, innerGlow: 78,  halo1: 130, halo2: 158, aura: 188 },
-  lg: { core: 136, innerGlow: 106, halo1: 174, halo2: 212, aura: 250 },
-  xl: { core: 168, innerGlow: 132, halo1: 216, halo2: 260, aura: 306 },
+  xs: { core: Math.round(36  * WEB_SCALE), innerGlow: Math.round(28  * WEB_SCALE), halo1: Math.round(48  * WEB_SCALE), halo2: Math.round(60  * WEB_SCALE), aura: Math.round(72  * WEB_SCALE) },
+  sm: { core: Math.round(64  * WEB_SCALE), innerGlow: Math.round(50  * WEB_SCALE), halo1: Math.round(84  * WEB_SCALE), halo2: Math.round(104 * WEB_SCALE), aura: Math.round(124 * WEB_SCALE) },
+  md: { core: Math.round(100 * WEB_SCALE), innerGlow: Math.round(78  * WEB_SCALE), halo1: Math.round(130 * WEB_SCALE), halo2: Math.round(158 * WEB_SCALE), aura: Math.round(188 * WEB_SCALE) },
+  lg: { core: Math.round(136 * WEB_SCALE), innerGlow: Math.round(106 * WEB_SCALE), halo1: Math.round(174 * WEB_SCALE), halo2: Math.round(212 * WEB_SCALE), aura: Math.round(250 * WEB_SCALE) },
+  xl: { core: Math.round(168 * WEB_SCALE), innerGlow: Math.round(132 * WEB_SCALE), halo1: Math.round(216 * WEB_SCALE), halo2: Math.round(260 * WEB_SCALE), aura: Math.round(306 * WEB_SCALE) },
 };
 
 export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
@@ -310,11 +311,13 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
             height: dims.core,
             borderRadius: dims.core / 2,
             backgroundColor: colors.coreBase,
-            shadowColor: colors.shadow,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: theme.dark ? 0.48 : 0.28,
-            shadowRadius: dims.core * 0.26,
-            elevation: 10,
+            ...shadow('md', {
+              color: colors.shadow,
+              offsetY: 6,
+              opacity: theme.dark ? 0.48 : 0.28,
+              radius: dims.core * 0.26,
+              elevation: 10,
+            }),
             transform: [{ scale: breathAnim }],
           },
         ]}

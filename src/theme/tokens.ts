@@ -3,6 +3,7 @@
 //  Single source of truth for all visual primitives.
 //  Brand palette: #9FA1FF · #B5BAFF · #AEE2FF · #D9F9DF
 // ─────────────────────────────────────────────────────────────
+import { Platform } from 'react-native';
 
 export const Colors = {
   // ── Brand ──────────────────────────────────────────────────
@@ -100,45 +101,88 @@ export const LineHeight = {
   relaxed: 1.7,
 } as const;
 
+// ─────────────────────────────────────────────────────────────
+//  Shadow helpers — web expects `boxShadow`, native expects
+//  `shadowColor` / `shadowOffset` / `shadowOpacity` / `shadowRadius`.
+//  Using the raw `shadow*` props triggers a deprecation warning on web.
+// ─────────────────────────────────────────────────────────────
 export interface ShadowStyle {
   shadowColor?:   string;
   shadowOffset?:  { width: number; height: number };
   shadowOpacity?: number;
   shadowRadius?:  number;
   elevation?:     number;
+  boxShadow?:     string;
 }
 
-// Shadows — soft, layered, neutral
-export const Shadows: Record<'none' | 'sm' | 'md' | 'lg' | 'orb', ShadowStyle> = {
-  none: {},
-  sm: {
-    shadowColor:   '#9FA1FF',
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius:  4,
-    elevation: 2,
-  },
-  md: {
-    shadowColor:   '#9FA1FF',
-    shadowOffset:  { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius:  8,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor:   '#9FA1FF',
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius:  16,
-    elevation: 8,
-  },
-  orb: {
-    shadowColor:   '#9FA1FF',
-    shadowOffset:  { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius:  24,
-    elevation: 12,
-  },
+export type ShadowName = 'none' | 'sm' | 'md' | 'lg' | 'orb';
+
+export interface ShadowOverrides {
+  color?:    string;
+  offsetX?:  number;
+  offsetY?:  number;
+  opacity?:  number;
+  radius?:   number;
+  elevation?: number;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h.length === 3
+    ? h.split('').map(c => c + c).join('')
+    : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const SHADOW_DEFS: Record<ShadowName, {
+  color: string; offsetX: number; offsetY: number; opacity: number; radius: number; elevation: number;
+}> = {
+  none: { color: '#000000', offsetX: 0, offsetY: 0, opacity: 0,    radius: 0,  elevation: 0 },
+  sm:   { color: '#9FA1FF', offsetX: 0, offsetY: 2, opacity: 0.08, radius: 4,  elevation: 2 },
+  md:   { color: '#9FA1FF', offsetX: 0, offsetY: 4, opacity: 0.12, radius: 8,  elevation: 4 },
+  lg:   { color: '#9FA1FF', offsetX: 0, offsetY: 8, opacity: 0.16, radius: 16, elevation: 8 },
+  orb:  { color: '#9FA1FF', offsetX: 0, offsetY: 0, opacity: 0.35, radius: 24, elevation: 12 },
+};
+
+/**
+ * Returns a platform-appropriate shadow style.
+ * On web → `{ boxShadow }` (CSS string). On native → `{ shadowColor, shadowOffset, ... }`.
+ * Pass a base preset name plus optional overrides.
+ */
+export function shadow(base: ShadowName, overrides: ShadowOverrides = {}): ShadowStyle {
+  const def = SHADOW_DEFS[base];
+  const color    = overrides.color    ?? def.color;
+  const offsetX  = overrides.offsetX  ?? def.offsetX;
+  const offsetY  = overrides.offsetY  ?? def.offsetY;
+  const opacity  = overrides.opacity  ?? def.opacity;
+  const radius   = overrides.radius   ?? def.radius;
+  const elevation = overrides.elevation ?? def.elevation;
+
+  if (Platform.OS === 'web') {
+    if (opacity === 0 || radius === 0) return { boxShadow: 'none' };
+    return {
+      boxShadow: `${offsetX}px ${offsetY}px ${radius}px 0px ${hexToRgba(color, opacity)}`,
+    };
+  }
+  return {
+    shadowColor:   color,
+    shadowOffset:  { width: offsetX, height: offsetY },
+    shadowOpacity: opacity,
+    shadowRadius:  radius,
+    elevation,
+  };
+}
+
+// Shadows — static tokens (kept for backward compat; prefer `shadow()` helper)
+export const Shadows: Record<ShadowName, ShadowStyle> = {
+  none: shadow('none'),
+  sm:   shadow('sm'),
+  md:   shadow('md'),
+  lg:   shadow('lg'),
+  orb:  shadow('orb'),
 };
 
 export const Duration = {

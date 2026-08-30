@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { shadow } from '../../src/theme/tokens';
+import { IS_WEB } from '../../src/theme/responsive';
 import { useApp } from '../../src/store/AppContext';
 
 export default function AppLayout() {
@@ -22,14 +24,16 @@ export default function AppLayout() {
           backgroundColor: theme.colors.backgroundCard,
           borderTopColor:  theme.colors.border,
           borderTopWidth:  1,
-          height: Platform.OS === 'ios' ? (isLarge ? 94 : 86) : (isLarge ? 74 : 66),
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-          elevation: 8,
-          shadowColor: '#9FA1FF',
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
+          height: IS_WEB ? (isLarge ? 60 : 54) : (Platform.OS === 'ios' ? (isLarge ? 94 : 86) : (isLarge ? 74 : 66)),
+          paddingTop: IS_WEB ? 4 : 8,
+          paddingBottom: IS_WEB ? 6 : (Platform.OS === 'ios' ? 24 : 10),
+          ...shadow('md', {
+            color: '#9FA1FF',
+            offsetY: -3,
+            opacity: 0.08,
+            radius: 12,
+            elevation: 8,
+          }),
         },
         tabBarLabelStyle: {
           fontFamily: theme.fonts.bodyMedium,
@@ -48,7 +52,7 @@ export default function AppLayout() {
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
                 name={focused ? 'shield' : 'shield-outline'}
-                size={isLarge ? 24 : 22}
+                size={IS_WEB ? (isLarge ? 20 : 18) : (isLarge ? 24 : 22)}
                 color={focused ? theme.colors.primaryDark : color}
               />
             </View>
@@ -64,7 +68,7 @@ export default function AppLayout() {
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
                 name={focused ? 'scan-circle' : 'scan-circle-outline'}
-                size={isLarge ? 24 : 22}
+                size={IS_WEB ? (isLarge ? 20 : 18) : (isLarge ? 24 : 22)}
                 color={focused ? theme.colors.primaryDark : color}
               />
             </View>
@@ -80,7 +84,7 @@ export default function AppLayout() {
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
                 name={focused ? 'sparkles' : 'sparkles-outline'}
-                size={isLarge ? 24 : 22}
+                size={IS_WEB ? (isLarge ? 20 : 18) : (isLarge ? 24 : 22)}
                 color={focused ? theme.colors.primaryDark : color}
               />
             </View>
@@ -96,7 +100,7 @@ export default function AppLayout() {
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
                 name={focused ? 'person' : 'person-outline'}
-                size={isLarge ? 24 : 22}
+                size={IS_WEB ? (isLarge ? 20 : 18) : (isLarge ? 24 : 22)}
                 color={focused ? theme.colors.primaryDark : color}
               />
             </View>
@@ -121,9 +125,9 @@ export default function AppLayout() {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 44,
-    height: 28,
-    borderRadius: 14,
+    width: IS_WEB ? 36 : 44,
+    height: IS_WEB ? 24 : 28,
+    borderRadius: IS_WEB ? 12 : 14,
     alignItems: 'center',
     justifyContent: 'center',
   },

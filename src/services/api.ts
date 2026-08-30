@@ -23,7 +23,7 @@ const API_BASE_URL =
     ? 'http://10.0.2.2:3000' // Android emulator maps to host
     : 'http://localhost:3000';
 
-const ANALYZE_TIMEOUT = 10000; // 10 seconds
+const API_TIMEOUT = 10000;
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -39,6 +39,27 @@ export interface AnalyzeResponse {
   explanation_roman_urdu: string;
   threat_indicators:     string[];
 }
+
+export interface CheckNumberResponse {
+  normalized_number: string | null;
+  international:     string | null;
+  valid:             boolean;
+  carrier:           string | null;
+  risk_score:        number;
+  verdict:           'SAFE' | 'SUSPICIOUS' | 'DANGEROUS';
+  reason:            string;
+  reason_roman_urdu: string;
+  community_reports: number;
+}
+
+export interface CommunityReportResponse {
+  success:   boolean;
+  message:   string;
+  count:     number;
+  duplicate: boolean;
+}
+
+const API_TIMEOUT = 10000;
 
 // ── API Functions ────────────────────────────────────────────
 
@@ -63,7 +84,7 @@ export async function analyzeContent(
   const resolvedType = inputType ?? inferContentType(input);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ANALYZE_TIMEOUT);
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -145,4 +166,103 @@ export function toScanResult(
     confidence: response.risk_score,
     details:    response.explanation_en,
   };
+}
+
+// ── Number Check ──────────────────────────────────────────────
+
+/**
+ * Check a Pakistani phone number for risk.
+ * Returns null if the backend is unavailable.
+ */
+export async function checkPhoneNumber(
+  phoneNumber: string
+): Promise<CheckNumberResponse | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/check-number`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: phoneNumber }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.warn(`[API] check-number returned ${response.status}`);
+      return null;
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    clearTimeout(timeout);
+    console.warn('[API] check-number failed:', err.message);
+    return null;
+  }
+}
+
+// ── Community Reporting ───────────────────────────────────────
+
+/**
+ * Report content as a scam to the community.
+ * Returns null if the backend is unavailable.
+ */
+export async function reportToCommunity(
+  contentType: 'text' | 'link' | 'phone',
+  identifier: string
+): Promise<CommunityReportResponse | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/community/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content_type: contentType, identifier }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.warn(`[API] community/report returned ${response.status}`);
+      return null;
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    clearTimeout(timeout);
+    console.warn('[API] community/report failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Get the community report count for an identifier.
+ * Returns 0 if the backend is unavailable.
+ */
+export async function getCommunityCount(
+  identifier: string
+): Promise<number> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/community/count?identifier=${encodeURIComponent(identifier)}`,
+      { signal: controller.signal }
+    );
+
+    clearTimeout(timeout);
+
+    if (!response.ok) return 0;
+
+    const data = await response.json();
+    return data.count || 0;
+  } catch {
+    clearTimeout(timeout);
+    return 0;
+  }
 }

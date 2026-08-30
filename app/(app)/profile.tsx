@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { IS_WEB } from '../../src/theme/responsive';
+import { shadow } from '../../src/theme/tokens';
 import { useAuth, useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
@@ -121,11 +123,7 @@ export default function ProfileScreen() {
             {
               backgroundColor: theme.colors.backgroundCard,
               borderColor: theme.colors.border,
-              shadowColor: '#9FA1FF',
-              shadowOpacity: 0.08,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 3,
+              ...shadow('sm', { opacity: 0.08, radius: 10, offsetY: 4, elevation: 3 }),
             },
           ]}
         >
@@ -250,11 +248,7 @@ export default function ProfileScreen() {
               {
                 backgroundColor: theme.colors.backgroundCard,
                 borderColor: theme.colors.border,
-                shadowColor: '#9FA1FF',
-                shadowOpacity: 0.05,
-                shadowRadius: 6,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 2,
+                ...shadow('sm', { opacity: 0.05, radius: 6, offsetY: 2, elevation: 2 }),
               },
             ]}
             accessibilityRole="button"
@@ -298,11 +292,7 @@ export default function ProfileScreen() {
               {
                 backgroundColor: theme.colors.backgroundCard,
                 borderColor: theme.colors.border,
-                shadowColor: '#9FA1FF',
-                shadowOpacity: 0.05,
-                shadowRadius: 6,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 2,
+                ...shadow('sm', { opacity: 0.05, radius: 6, offsetY: 2, elevation: 2 }),
               },
             ]}
             accessibilityRole="button"
@@ -346,11 +336,7 @@ export default function ProfileScreen() {
               {
                 backgroundColor: theme.colors.backgroundCard,
                 borderColor: theme.colors.border,
-                shadowColor: '#9FA1FF',
-                shadowOpacity: 0.05,
-                shadowRadius: 6,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 2,
+                ...shadow('sm', { opacity: 0.05, radius: 6, offsetY: 2, elevation: 2 }),
               },
             ]}
             accessibilityRole="button"
@@ -661,7 +647,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: IS_WEB ? 14 : 20,
   },
 
   // ── Top Header ──────────────────────────────────────────────
@@ -681,7 +667,7 @@ const styles = StyleSheet.create({
 
   // ── User Identity Card ──────────────────────────────────────
   userCard: {
-    borderRadius: 20,
+    borderRadius: IS_WEB ? 16 : 20,
     borderWidth: 1.5,
     overflow: 'hidden',
     marginBottom: 20,
@@ -690,15 +676,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 18,
-    gap: 16,
+    gap: IS_WEB ? 12 : 16,
   },
   avatarContainer: {
     position: 'relative',
   },
   avatarBg: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: IS_WEB ? 48 : 58,
+    height: IS_WEB ? 48 : 58,
+    borderRadius: IS_WEB ? 24 : 29,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -724,14 +710,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   userCardFooter: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: IS_WEB ? 12 : 16,
+    paddingVertical: IS_WEB ? 8 : 10,
     borderTopWidth: 1,
   },
   guardianInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: IS_WEB ? 8 : 10,
   },
   guardianOrbMini: {
     width: 28,
@@ -756,22 +742,22 @@ const styles = StyleSheet.create({
   // ── Quick Tools Grid ────────────────────────────────────────
   toolsGrid: {
     flexDirection: 'row',
-    gap: 10,
+    gap: IS_WEB ? 8 : 10,
     marginBottom: 20,
   },
   toolCard: {
     flex: 1,
     borderRadius: 16,
     borderWidth: 1.5,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingVertical: IS_WEB ? 11 : 14,
+    paddingHorizontal: IS_WEB ? 8 : 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   toolIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: IS_WEB ? 32 : 38,
+    height: IS_WEB ? 32 : 38,
+    borderRadius: IS_WEB ? 16 : 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -794,15 +780,15 @@ const styles = StyleSheet.create({
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 16,
+    paddingVertical: IS_WEB ? 12 : 15,
+    paddingHorizontal: IS_WEB ? 12 : 16,
     borderBottomWidth: 1,
-    gap: 14,
+    gap: IS_WEB ? 10 : 14,
   },
   rowIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: IS_WEB ? 34 : 40,
+    height: IS_WEB ? 34 : 40,
+    borderRadius: IS_WEB ? 17 : 20,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -822,11 +808,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    borderRadius: 18,
+    gap: IS_WEB ? 8 : 10,
+    borderRadius: IS_WEB ? 14 : 18,
     borderWidth: 1.5,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: IS_WEB ? 12 : 16,
+    paddingHorizontal: IS_WEB ? 14 : 20,
     marginBottom: 16,
   },
   signOutIconWrap: {

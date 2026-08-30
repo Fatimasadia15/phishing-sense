@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useApp } from '../../store/AppContext';
+import { IS_WEB } from '../../theme/responsive';
 
 // ─────────────────────────────────────────────────────────────
 //  Button Component
@@ -53,18 +54,22 @@ export function Button({
   const isLarge = textSize === 'large';
 
   const heights: Record<Size, number> = {
-    sm: 44,
-    md: isLarge ? 60 : 52,
-    lg: isLarge ? 68 : 60,
+    sm: IS_WEB ? 36 : 44,
+    md: IS_WEB ? (isLarge ? 48 : 44) : (isLarge ? 60 : 52),
+    lg: IS_WEB ? (isLarge ? 54 : 48) : (isLarge ? 68 : 60),
   };
 
   const fontSizes: Record<Size, number> = {
-    sm: isLarge ? 15 : 13,
-    md: isLarge ? 18 : 16,
-    lg: isLarge ? 20 : 18,
+    sm: IS_WEB ? (isLarge ? 13 : 12) : (isLarge ? 15 : 13),
+    md: IS_WEB ? (isLarge ? 15 : 14) : (isLarge ? 18 : 16),
+    lg: IS_WEB ? (isLarge ? 17 : 15) : (isLarge ? 20 : 18),
   };
 
-  const paddings: Record<Size, number> = { sm: 16, md: 24, lg: 32 };
+  const paddings: Record<Size, number> = {
+    sm: IS_WEB ? 12 : 16,
+    md: IS_WEB ? 18 : 24,
+    lg: IS_WEB ? 22 : 32,
+  };
 
   const getColors = (): { bg: string; text: string; border?: string } => {
     if (disabled) return { bg: theme.colors.border, text: theme.colors.textDisabled };
@@ -102,10 +107,8 @@ export function Button({
           borderWidth:      border ? 1.5 : 0,
           borderColor:      border,
           width:            fullWidth ? '100%' : undefined,
-          ...theme.shadows.sm,
+          ...((variant === 'ghost' || disabled) ? {} : theme.shadows.sm),
         },
-        (variant === 'ghost') && { shadowOpacity: 0 },
-        disabled && { shadowOpacity: 0 },
         style,
       ]}
     >

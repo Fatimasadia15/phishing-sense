@@ -1,4 +1,4 @@
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from './tokens';
+import { Colors, Spacing, Radius, FontSize, FontWeight, shadow } from './tokens';
 import type { Theme } from './lightTheme';
 
 // ─────────────────────────────────────────────────────────────
@@ -76,11 +76,11 @@ export const darkTheme: Theme = {
   fontSize: FontSize,
   fontWeight: FontWeight,
   shadows: {
-    ...Shadows,
-    sm: { ...Shadows.sm, shadowColor: '#ADB0FF', shadowOpacity: 0.12 },
-    md: { ...Shadows.md, shadowColor: '#ADB0FF', shadowOpacity: 0.18 },
-    lg: { ...Shadows.lg, shadowColor: '#ADB0FF', shadowOpacity: 0.24 },
-    orb: { ...Shadows.orb, shadowColor: '#ADB0FF', shadowOpacity: 0.45 },
+    none: shadow('none'),
+    sm:   shadow('sm', { color: '#ADB0FF', opacity: 0.12 }),
+    md:   shadow('md', { color: '#ADB0FF', opacity: 0.18 }),
+    lg:   shadow('lg', { color: '#ADB0FF', opacity: 0.24 }),
+    orb:  shadow('orb', { color: '#ADB0FF', opacity: 0.45 }),
   },
 
   fonts: {

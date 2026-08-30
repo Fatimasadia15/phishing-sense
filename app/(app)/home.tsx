@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { IS_WEB } from '../../src/theme/responsive';
 import { useAuth, useApp } from '../../src/store/AppContext';
 import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
@@ -146,7 +147,7 @@ export default function HomeScreen() {
         {/* ── 3. The Sense Orb Stage (AI Companion) ─────────── */}
         <Card
           variant="elevated"
-          padding={20}
+          padding={IS_WEB ? 14 : 20}
           style={styles.orbStageCard}
         >
           {/* Status Chip */}
@@ -197,10 +198,10 @@ export default function HomeScreen() {
             label="Scan Something Now"
             onPress={() => router.push('/(app)/scan')}
             variant="primary"
-            size="lg"
+            size={IS_WEB ? 'md' : 'lg'}
             fullWidth
-            icon={<Ionicons name="scan-outline" size={22} color="#FFFFFF" />}
-            style={styles.primaryScanBtn}
+            icon={<Ionicons name="scan-outline" size={IS_WEB ? 18 : 22} color="#FFFFFF" />}
+            style={[styles.primaryScanBtn, IS_WEB && { maxWidth: 280 }]}
           />
         </Card>
 
@@ -238,7 +239,7 @@ export default function HomeScreen() {
               accessibilityLabel={action.label}
             >
               <View style={[styles.gridIconWrap, { backgroundColor: action.bg }]}>
-                <Ionicons name={action.icon as any} size={22} color={action.color} />
+                <Ionicons name={action.icon as any} size={IS_WEB ? 18 : 22} color={action.color} />
               </View>
               <Text
                 style={[
@@ -290,7 +291,7 @@ export default function HomeScreen() {
               { backgroundColor: theme.colors.dangerDark },
             ]}
           >
-            <Ionicons name="warning" size={20} color="#FFFFFF" />
+            <Ionicons name="warning" size={IS_WEB ? 16 : 20} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1 }}>
             <Text
@@ -320,7 +321,7 @@ export default function HomeScreen() {
           </View>
           <Ionicons
             name="chevron-forward"
-            size={18}
+            size={IS_WEB ? 16 : 18}
             color={theme.colors.dangerDark}
           />
         </TouchableOpacity>
@@ -434,7 +435,7 @@ export default function HomeScreen() {
         {/* ── 7. Daily Safety Tip ───────────────────────────── */}
         <Card
           variant="flat"
-          padding={16}
+          padding={IS_WEB ? 12 : 16}
           color={theme.colors.skyLight}
           style={styles.tipCard}
         >
@@ -445,7 +446,7 @@ export default function HomeScreen() {
                 { backgroundColor: theme.colors.sky },
               ]}
             >
-              <Ionicons name="bulb-outline" size={20} color={theme.colors.skyDark} />
+              <Ionicons name="bulb-outline" size={IS_WEB ? 16 : 20} color={theme.colors.skyDark} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     opacity:      0.45,
   },
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: IS_WEB ? 14 : 20,
   },
   topHeader: {
     flexDirection:  'row',
@@ -542,9 +543,9 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   orbStageCard: {
-    borderRadius:  24,
+    borderRadius:  IS_WEB ? 18 : 24,
     alignItems:    'center',
-    marginBottom:  20,
+    marginBottom:  IS_WEB ? 14 : 20,
   },
   statusPillRow: {
     alignItems:   'center',
@@ -597,24 +598,24 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap:      'wrap',
-    gap:           12,
-    marginBottom:  18,
+    gap:           IS_WEB ? 10 : 12,
+    marginBottom:  IS_WEB ? 14 : 18,
   },
   gridCard: {
     width:             '48%',
-    paddingVertical:   16,
-    paddingHorizontal: 14,
-    borderRadius:      18,
+    paddingVertical:   IS_WEB ? 12 : 16,
+    paddingHorizontal: IS_WEB ? 10 : 14,
+    borderRadius:      IS_WEB ? 14 : 18,
     borderWidth:       1,
     alignItems:        'flex-start',
   },
   gridIconWrap: {
-    width:          40,
-    height:         40,
-    borderRadius:   20,
+    width:          IS_WEB ? 34 : 40,
+    height:         IS_WEB ? 34 : 40,
+    borderRadius:   IS_WEB ? 17 : 20,
     alignItems:     'center',
     justifyContent: 'center',
-    marginBottom:   10,
+    marginBottom:   IS_WEB ? 8 : 10,
   },
   gridLabel: {
     marginBottom: 2,
@@ -625,17 +626,17 @@ const styles = StyleSheet.create({
   panicCard: {
     flexDirection:   'row',
     alignItems:      'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius:    16,
+    paddingVertical: IS_WEB ? 10 : 12,
+    paddingHorizontal: IS_WEB ? 12 : 16,
+    borderRadius:    IS_WEB ? 14 : 16,
     borderWidth:     1.2,
-    marginBottom:    18,
-    gap:             12,
+    marginBottom:    IS_WEB ? 14 : 18,
+    gap:             IS_WEB ? 10 : 12,
   },
   panicIconBadge: {
-    width:          34,
-    height:         34,
-    borderRadius:   17,
+    width:          IS_WEB ? 28 : 34,
+    height:         IS_WEB ? 28 : 34,
+    borderRadius:   IS_WEB ? 14 : 17,
     alignItems:     'center',
     justifyContent: 'center',
   },
@@ -675,19 +676,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tipCard: {
-    borderRadius: 16,
+    borderRadius: IS_WEB ? 14 : 16,
     marginTop:    4,
-    marginBottom: 12,
+    marginBottom: IS_WEB ? 10 : 12,
   },
   tipRow: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           12,
+    gap:           IS_WEB ? 10 : 12,
   },
   tipIconWrap: {
-    width:          36,
-    height:         36,
-    borderRadius:   18,
+    width:          IS_WEB ? 30 : 36,
+    height:         IS_WEB ? 30 : 36,
+    borderRadius:   IS_WEB ? 15 : 18,
     alignItems:     'center',
     justifyContent: 'center',
   },

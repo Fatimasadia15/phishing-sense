@@ -11,7 +11,13 @@ const cors             = require('cors');
 const helmet           = require('helmet');
 const rateLimit        = require('express-rate-limit');
 const { handleAnalyze } = require('./routes/analyze');
-const { validateAnalyzeRequest } = require('./middleware/validate');
+const { handleCheckNumber } = require('./routes/checkNumber');
+const { handleReport, handleCount } = require('./routes/community');
+const {
+  validateAnalyzeRequest,
+  validateCheckNumberRequest,
+  validateCommunityReportRequest,
+} = require('./middleware/validate');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -64,14 +70,24 @@ app.get('/api/health', (_req, res) => {
 // ── Main analysis endpoint ──────────────────────────────────
 app.post('/api/analyze', limiter, validateAnalyzeRequest, handleAnalyze);
 
+// ── Number check endpoint ────────────────────────────────────
+app.post('/api/check-number', limiter, validateCheckNumberRequest, handleCheckNumber);
+
+// ── Community reporting endpoints ───────────────────────────
+app.post('/api/community/report', limiter, validateCommunityReportRequest, handleReport);
+app.get('/api/community/count', handleCount);
+
 // ── Root route ──────────────────────────────────────────────
 app.get('/', (_req, res) => {
   res.json({
     service: 'Phishing Sense API',
     version: '1.0.0',
     endpoints: {
-      health:  'GET  /api/health',
-      analyze: 'POST /api/analyze',
+      health:         'GET  /api/health',
+      analyze:        'POST /api/analyze',
+      checkNumber:    'POST /api/check-number',
+      communityReport:'POST /api/community/report',
+      communityCount: 'GET  /api/community/count',
     },
     usage: 'POST to /api/analyze with { "input": "...", "input_type": "text|link|message" }',
   });
@@ -92,8 +108,11 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`[Phishing Sense] Server running on http://localhost:${PORT}`);
   console.log(`[Phishing Sense] LLM provider: ${process.env.LLM_PROVIDER || 'none (rules only)'}`);
-  console.log(`[Phishing Sense] Health check: http://localhost:${PORT}/api/health`);
-  console.log(`[Phishing Sense] Analyze: POST http://localhost:${PORT}/api/analyze`);
+  console.log(`[Phishing Sense] Health:        GET  http://localhost:${PORT}/api/health`);
+  console.log(`[Phishing Sense] Analyze:       POST http://localhost:${PORT}/api/analyze`);
+  console.log(`[Phishing Sense] Check Number:  POST http://localhost:${PORT}/api/check-number`);
+  console.log(`[Phishing Sense] Report:        POST http://localhost:${PORT}/api/community/report`);
+  console.log(`[Phishing Sense] Report Count:  GET  http://localhost:${PORT}/api/community/count`);
 });
 
 module.exports = app;

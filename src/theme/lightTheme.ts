@@ -1,4 +1,4 @@
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadows } from './tokens';
+import { Colors, Spacing, Radius, FontSize, FontWeight, shadow } from './tokens';
 
 export interface ThemeColors {
   background:        string;
@@ -147,7 +147,13 @@ export const lightTheme: Theme = {
   radius:  Radius,
   fontSize: FontSize,
   fontWeight: FontWeight,
-  shadows: Shadows,
+  shadows: {
+    none: shadow('none'),
+    sm:   shadow('sm'),
+    md:   shadow('md'),
+    lg:   shadow('lg'),
+    orb:  shadow('orb'),
+  },
 
   // Typography families
   fonts: {

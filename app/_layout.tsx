@@ -17,13 +17,14 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { I18nManager } from 'react-native';
+import { I18nManager, View, StyleSheet } from 'react-native';
 
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { LanguageProvider }        from '../src/i18n/LanguageContext';
 import { AuthProvider }            from '../src/store/AppContext';
 import { AppProvider }             from '../src/store/AppContext';
 import { initI18n, getSavedLanguage, RTL_LANGUAGES } from '../src/i18n/index';
+import { IS_WEB, MAX_CONTENT_WIDTH } from '../src/theme/responsive';
 import type { SupportedLanguage }  from '../src/i18n/index';
 
 // Keep native splash visible until we're ready
@@ -91,16 +92,31 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <LanguageProvider initialLanguage={initialLang}>
-            <AuthProvider>
-              <AppProvider>
-                <InnerLayout />
-              </AppProvider>
-            </AuthProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <View style={IS_WEB ? rootStyles.webColumn : undefined}>
+          <ThemeProvider>
+            <LanguageProvider initialLanguage={initialLang}>
+              <AuthProvider>
+                <AppProvider>
+                  <InnerLayout />
+                </AppProvider>
+              </AuthProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+const rootStyles = StyleSheet.create({
+  webColumn: {
+    flex: 1,
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D8D8EA',
+    backgroundColor: '#F8F9FE',
+  },
+});

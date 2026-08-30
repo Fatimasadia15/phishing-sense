@@ -150,6 +150,20 @@
       "confidence": "Confidence: {{value}}%",
       "scanAgain": "Scan Something Else",
       "details": "Why this result?"
+    },
+    "voice": {
+      "tapToSpeak": "Tap to speak",
+      "listening": "Listening…",
+      "processing": "Processing…",
+      "speaking": "Speaking…",
+      "done": "Done",
+      "tryAgain": "Tap to try again",
+      "notAvailable": "Voice not available",
+      "hearing": "Hearing…",
+      "errorPermission": "Microphone permission is needed. You can still type or paste text.",
+      "errorNoSpeech": "No speech detected. Try speaking closer or type the text.",
+      "errorGeneric": "Voice input is not available. You can type or paste instead.",
+      "orSpeak": "or speak it"
     }
   },
   "senseAi": {

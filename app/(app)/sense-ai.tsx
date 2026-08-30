@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { IS_WEB } from '../../src/theme/responsive';
+import { shadow } from '../../src/theme/tokens';
 import { useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
@@ -240,11 +242,7 @@ export default function SenseAIScreen() {
                     {
                       backgroundColor: theme.colors.backgroundCard,
                       borderColor:     theme.colors.border,
-                      shadowColor:     '#9FA1FF',
-                      shadowOpacity:   0.07,
-                      shadowRadius:    6,
-                      shadowOffset:    { width: 0, height: 2 },
-                      elevation:       2,
+                      ...shadow('sm', { opacity: 0.07, radius: 6, offsetY: 2, elevation: 2 }),
                     },
                   ]}
                 >
@@ -295,22 +293,14 @@ export default function SenseAIScreen() {
                     ? {
                         backgroundColor: theme.colors.primary,
                         borderBottomEndRadius: 4,
-                        shadowColor: theme.colors.primary,
-                        shadowOpacity: 0.28,
-                        shadowRadius: 10,
-                        shadowOffset: { width: 0, height: 3 },
-                        elevation: 4,
+                        ...shadow('sm', { color: theme.colors.primary, opacity: 0.28, radius: 10, offsetY: 3, elevation: 4 }),
                       }
                     : {
                         backgroundColor: theme.colors.backgroundCard,
                         borderColor: theme.colors.border,
                         borderWidth: 1.5,
                         borderBottomStartRadius: 4,
-                        shadowColor: '#9FA1FF',
-                        shadowOpacity: 0.06,
-                        shadowRadius: 6,
-                        shadowOffset: { width: 0, height: 2 },
-                        elevation: 2,
+                        ...shadow('sm', { opacity: 0.06, radius: 6, offsetY: 2, elevation: 2 }),
                       },
                 ]}
               >
@@ -426,11 +416,9 @@ export default function SenseAIScreen() {
               backgroundColor: theme.colors.backgroundMuted,
               borderColor:     isFocused ? theme.colors.primary : theme.colors.border,
               borderWidth:     isFocused ? 2 : 1.5,
-              shadowColor:     theme.colors.primary,
-              shadowOpacity:   isFocused ? 0.14 : 0,
-              shadowRadius:    8,
-              shadowOffset:    { width: 0, height: 2 },
-              elevation:       isFocused ? 4 : 0,
+              ...(isFocused
+                ? shadow('sm', { color: theme.colors.primary, opacity: 0.14, radius: 8, offsetY: 2, elevation: 4 })
+                : {}),
             },
           ]}
         >
@@ -467,17 +455,15 @@ export default function SenseAIScreen() {
                 styles.sendBtn,
                 {
                   backgroundColor: input.trim() && !isChatThinking ? theme.colors.primary : theme.colors.border,
-                  shadowColor:     theme.colors.primary,
-                  shadowOpacity:   input.trim() && !isChatThinking ? 0.38 : 0,
-                  shadowRadius:    10,
-                  shadowOffset:    { width: 0, height: 3 },
-                  elevation:       input.trim() && !isChatThinking ? 4 : 0,
+                  ...(input.trim() && !isChatThinking
+                    ? shadow('sm', { color: theme.colors.primary, opacity: 0.38, radius: 10, offsetY: 3, elevation: 4 })
+                    : {}),
                 },
               ]}
             >
               <Ionicons
                 name="arrow-up"
-                size={20}
+                size={IS_WEB ? 17 : 20}
                 color={input.trim() && !isChatThinking ? '#FFFFFF' : theme.colors.textDisabled}
               />
             </TouchableOpacity>
@@ -507,7 +493,7 @@ const styles = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: IS_WEB ? 14 : 20,
     paddingBottom:     14,
     borderBottomWidth: 1,
   },
@@ -517,9 +503,9 @@ const styles = StyleSheet.create({
     gap:            12,
   },
   headerOrbWrap: {
-    width:        48,
-    height:       48,
-    borderRadius: 24,
+    width:        IS_WEB ? 40 : 48,
+    height:       IS_WEB ? 40 : 48,
+    borderRadius: IS_WEB ? 20 : 24,
     borderWidth:  1,
     alignItems:   'center',
     justifyContent: 'center',
@@ -536,16 +522,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   clearBtn: {
-    width:        36,
-    height:       36,
-    borderRadius: 18,
+    width:        IS_WEB ? 28 : 36,
+    height:       IS_WEB ? 28 : 36,
+    borderRadius: IS_WEB ? 14 : 18,
     alignItems:   'center',
     justifyContent: 'center',
   },
 
   // ── Chat scroll area ──────────────────────────────────────
   chatContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: IS_WEB ? 12 : 16,
     paddingTop:        20,
   },
 
@@ -555,9 +541,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   welcomeOrbStage: {
-    width:         140,
-    height:        140,
-    borderRadius:  70,
+    width:         IS_WEB ? 110 : 140,
+    height:        IS_WEB ? 110 : 140,
+    borderRadius:  IS_WEB ? 55 : 70,
     alignItems:    'center',
     justifyContent:'center',
     marginBottom:  20,
@@ -571,7 +557,7 @@ const styles = StyleSheet.create({
     textAlign:   'center',
     lineHeight:  22,
     marginBottom: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: IS_WEB ? 12 : 16,
   },
   trustRow: {
     flexDirection:  'row',
@@ -601,11 +587,11 @@ const styles = StyleSheet.create({
   suggestChip: {
     flexDirection:    'row',
     alignItems:       'center',
-    gap:              10,
-    borderRadius:     16,
+    gap:              IS_WEB ? 8 : 10,
+    borderRadius:     IS_WEB ? 14 : 16,
     borderWidth:      1.5,
-    paddingVertical:  14,
-    paddingHorizontal: 16,
+    paddingVertical:  IS_WEB ? 10 : 14,
+    paddingHorizontal: IS_WEB ? 12 : 16,
     marginBottom:     10,
   },
   suggestIconWrap: {
@@ -635,9 +621,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   aiAvatarWrap: {
-    width:        36,
-    height:       36,
-    borderRadius: 18,
+    width:        IS_WEB ? 28 : 36,
+    height:       IS_WEB ? 28 : 36,
+    borderRadius: IS_WEB ? 14 : 18,
     borderWidth:  1,
     alignItems:   'center',
     justifyContent: 'center',
@@ -646,9 +632,9 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth:         '78%',
-    paddingVertical:  13,
-    paddingHorizontal: 16,
-    borderRadius:     20,
+    paddingVertical:  IS_WEB ? 10 : 13,
+    paddingHorizontal: IS_WEB ? 12 : 16,
+    borderRadius:     IS_WEB ? 16 : 20,
   },
   aiLabelRow: {
     marginBottom: 6,
@@ -667,7 +653,7 @@ const styles = StyleSheet.create({
 
   // ── Input bar ─────────────────────────────────────────────
   inputBar: {
-    paddingHorizontal: 16,
+    paddingHorizontal: IS_WEB ? 12 : 16,
     paddingTop:        10,
     borderTopWidth:    1,
   },
@@ -692,9 +678,9 @@ const styles = StyleSheet.create({
     alignItems:     'flex-end',
     gap:            10,
     borderRadius:   24,
-    paddingHorizontal: 16,
+    paddingHorizontal: IS_WEB ? 12 : 16,
     paddingVertical: 8,
-    minHeight:      52,
+    minHeight:      IS_WEB ? 44 : 52,
   },
   textInput: {
     flex:         1,

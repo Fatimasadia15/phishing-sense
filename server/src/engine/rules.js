@@ -350,12 +350,136 @@ function analyzeWithRules(input, inputType) {
   };
 }
 
+/**
+ * Normalize a Pakistani phone number to 03XX format.
+ * Accepts: 03001234567, +923001234567, 00923001234567, with spaces/dashes.
+ *
+ * @param {string} raw
+ * @returns {{ normalized: string|null, international: string|null, valid: boolean }}
+ */
+function normalizePhoneNumber(raw) {
+  if (!raw || typeof raw !== 'string') return { normalized: null, international: null, valid: false };
+
+  const stripped = raw.replace(/[\s\-()]/g, '');
+
+  let local = null;
+  if (/^\+92\d{10}$/.test(stripped)) {
+    local = '0' + stripped.slice(3);
+  } else if (/^0092\d{10}$/.test(stripped)) {
+    local = '0' + stripped.slice(4);
+  } else if (/^0\d{10}$/.test(stripped)) {
+    local = stripped;
+  } else if (/^92\d{10}$/.test(stripped)) {
+    local = '0' + stripped.slice(2);
+  } else if (/^3\d{9}$/.test(stripped)) {
+    local = '0' + stripped;
+  }
+
+  if (!local || !/^03\d{9}$/.test(local)) {
+    return { normalized: null, international: null, valid: false };
+  }
+
+  return {
+    normalized: local,
+    international: '+92' + local.slice(1),
+    valid: true,
+  };
+}
+
+/**
+ * Analyze a Pakistani phone number for risk.
+ *
+ * @param {string} phoneNumber - Raw phone input
+ * @returns {{
+ *   normalized_number: string|null,
+ *   international: string|null,
+ *   valid: boolean,
+ *   carrier: string|null,
+ *   risk_score: number,
+ *   verdict: string,
+ *   reason: string,
+ *   reason_roman_urdu: string,
+ *   community_reports: number,
+ * }}
+ */
+function analyzePhoneNumber(phoneNumber) {
+  const { normalized, international, valid } = normalizePhoneNumber(phoneNumber);
+
+  if (!valid) {
+    return {
+      normalized_number: null,
+      international: null,
+      valid: false,
+      carrier: null,
+      risk_score: 0,
+      verdict: 'SAFE',
+      reason: 'This does not match a valid Pakistani mobile number format.',
+      reason_roman_urdu: 'Yeh Pakistani mobile number ke format se match nahi karta.',
+      community_reports: 0,
+    };
+  }
+
+  const prefix = normalized.slice(0, 4);
+  const carrier = PK_PHONE_PREFIXES[prefix] || null;
+
+  let riskPoints = 0;
+  const reasons = [];
+  const reasonsUr = [];
+
+  if (carrier) {
+    reasons.push(`Valid Pakistani mobile number on the ${carrier} network.`);
+    reasonsUr.push(`Yeh ${carrier} network ka valid Pakistani number hai.`);
+  } else {
+    reasons.push('Valid Pakistani mobile number format, but carrier could not be identified.');
+    reasonsUr.push('Format valid hai lekin carrier ki shanakht nahi ho saki.');
+    riskPoints += 5;
+  }
+
+  // Known demo/scam numbers for testing
+  const KNOWN_SCAM_NUMBERS = ['03001234567', '03119876543'];
+  if (KNOWN_SCAM_NUMBERS.includes(normalized)) {
+    riskPoints += 40;
+    reasons.push('This number matches a known demo scam number.');
+    reasonsUr.push('Yeh number mashhoor demo scam number se match karta hai.');
+  }
+
+  const score = Math.max(0, Math.min(100, Math.round(riskPoints * 1.2)));
+  let verdict;
+  if (score <= 30) verdict = 'SAFE';
+  else if (score <= 70) verdict = 'SUSPICIOUS';
+  else verdict = 'DANGEROUS';
+
+  let reason, reasonUr;
+  if (score === 0) {
+    reason = 'No known risk found for this number.';
+    reasonUr = 'Is number ka koi mashhoor khatra nahi mila.';
+  } else {
+    reason = reasons.join(' ');
+    reasonUr = reasonsUr.join(' ');
+  }
+
+  return {
+    normalized_number: international,
+    international,
+    valid: true,
+    carrier,
+    risk_score: score,
+    verdict,
+    reason,
+    reason_roman_urdu: reasonUr,
+    community_reports: 0,
+  };
+}
+
 module.exports = {
   analyzeWithRules,
+  analyzePhoneNumber,
+  normalizePhoneNumber,
   extractDomain,
   isUrlShortener,
   checkLookalike,
   hasSuspiciousTld,
   isTrustedDomain,
   PK_PHONE_REGEX,
+  PK_PHONE_PREFIXES,
 };

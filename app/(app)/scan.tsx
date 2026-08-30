@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { IS_WEB } from '../../src/theme/responsive';
+import { shadow } from '../../src/theme/tokens';
 import { useApp } from '../../src/store/AppContext';
 import { Badge } from '../../src/components/ui/Badge';
 import { SenseOrb, type OrbState } from '../../src/components/ui/SenseOrb';
+import { VoiceButton } from '../../src/components/ui/VoiceButton';
+import { useVoiceAssistant, buildVoiceSummary } from '../../src/services/voice';
+import { useLanguage } from '../../src/i18n/LanguageContext';
+import { checkPhoneNumber, reportToCommunity, type CheckNumberResponse } from '../../src/services/api';
 import type { ScanResult } from '../../src/constants/mockData';
 
 
@@ -52,6 +58,7 @@ export default function ScanScreen() {
   const { theme }                          = useTheme();
   const { t }                              = useTranslation();
   const { addScan, scanHistory, textSize } = useApp();
+  const { language }                       = useLanguage();
   const insets                             = useSafeAreaInsets();
   const isLarge                            = textSize === 'large';
 
@@ -60,6 +67,9 @@ export default function ScanScreen() {
   const [orbState,     setOrbState]     = useState<OrbState>('idle');
   const [result,       setResult]       = useState<ScanResult | null>(null);
   const [isFocused,    setIsFocused]    = useState(false);
+  const [phoneResult,  setPhoneResult]  = useState<CheckNumberResponse | null>(null);
+  const [reportStatus, setReportStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const [reportCount,  setReportCount]  = useState(0);
 
   const btnScale      = useRef(new Animated.Value(1)).current;
   const resultOpacity = useRef(new Animated.Value(0)).current;
@@ -69,8 +79,33 @@ export default function ScanScreen() {
   const hasInput    = inputContent.trim().length > 0;
   const isScanning  = orbState === 'analyzing';
 
-  // ── Existing scan logic (unchanged) ──────────────────────
-  const handleScan = () => {
+  // ── Voice: callback returns text to auto-speak ──────────
+  const handleVoiceTextReady = useCallback(async (text: string): Promise<string> => {
+    setInputContent(text);
+    setOrbState('analyzing');
+    setResult(null);
+    resultOpacity.setValue(0);
+    resultSlide.setValue(20);
+    // Brief delay for the text to render, then trigger analysis
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    const scanRes = await addScan(text);
+    setResult(scanRes);
+    setOrbState('result');
+    Animated.parallel([
+      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
+    ]).start();
+    // Return the verdict summary — the voice hook will auto-speak it
+    return buildVoiceSummary(scanRes.risk, scanRes.details, language);
+  }, [addScan, language]);
+
+  const {
+    voiceState, recognizedText, errorMessage, isAvailable,
+    startListening, stopListening, speakResult, stopSpeaking, reset: resetVoice,
+  } = useVoiceAssistant(language, handleVoiceTextReady);
+
+  // ── Existing scan logic ────────────────────────────────────
+  const handleScan = async () => {
     if (!inputContent.trim() || isScanning) return;
     Keyboard.dismiss();
     Animated.sequence([
@@ -79,24 +114,66 @@ export default function ScanScreen() {
     ]).start();
     setOrbState('analyzing');
     setResult(null);
+    setPhoneResult(null);
+    setReportStatus('idle');
+    setReportCount(0);
     resultOpacity.setValue(0);
     resultSlide.setValue(20);
-    setTimeout(async () => {
-      const scanRes = await addScan(inputContent);
-      setResult(scanRes);
+
+    if (selectedType === 'phone') {
+      // Phone number check — dedicated flow
+      const phoneRes = await checkPhoneNumber(inputContent.trim());
+      if (phoneRes) {
+        setPhoneResult(phoneRes);
+        setReportCount(phoneRes.community_reports);
+      } else {
+        // Fallback to generic scan if backend unavailable
+        const scanRes = await addScan(inputContent);
+        setResult(scanRes);
+      }
       setOrbState('result');
       Animated.parallel([
         Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
         Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
       ]).start();
-    }, 1800);
+    } else {
+      setTimeout(async () => {
+        const scanRes = await addScan(inputContent);
+        setResult(scanRes);
+        setOrbState('result');
+        Animated.parallel([
+          Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
+        ]).start();
+      }, 1800);
+    }
+  };
+
+  const handleReportCommunity = async () => {
+    if (reportStatus === 'sending' || reportStatus === 'done') return;
+    setReportStatus('sending');
+
+    const contentType = phoneResult ? 'phone' : (selectedType === 'url' ? 'link' : 'text');
+    const identifier = phoneResult?.normalized_number || inputContent.trim();
+    const res = await reportToCommunity(contentType, identifier);
+
+    if (res) {
+      setReportStatus('done');
+      setReportCount(res.count);
+    } else {
+      setReportStatus('error');
+    }
   };
 
   const handleClear = () => {
     setInputContent('');
     setResult(null);
+    setPhoneResult(null);
+    setReportStatus('idle');
+    setReportCount(0);
     setOrbState('idle');
     resultOpacity.setValue(0);
+    resetVoice();
   };
 
   const handleTypeSelect = (type: ScanType) => {
@@ -179,11 +256,9 @@ export default function ScanScreen() {
                   {
                     backgroundColor: active ? theme.colors.primary : theme.colors.backgroundCard,
                     borderColor:     active ? theme.colors.primary : theme.colors.border,
-                    shadowColor:     active ? theme.colors.primary : 'transparent',
-                    shadowOpacity:   active ? 0.22 : 0,
-                    shadowRadius:    8,
-                    shadowOffset:    { width: 0, height: 3 },
-                    elevation:       active ? 4 : 0,
+                    ...(active
+                      ? shadow('sm', { color: theme.colors.primary, opacity: 0.22, radius: 8, offsetY: 3, elevation: 4 })
+                      : {}),
                   },
                 ]}
               >
@@ -204,11 +279,13 @@ export default function ScanScreen() {
               backgroundColor: theme.colors.backgroundCard,
               borderColor:     isFocused ? theme.colors.primary : theme.colors.border,
               borderWidth:     isFocused ? 2 : 1.5,
-              shadowColor:     theme.colors.primary,
-              shadowOpacity:   isFocused ? 0.18 : 0.06,
-              shadowRadius:    isFocused ? 12 : 4,
-              shadowOffset:    { width: 0, height: 4 },
-              elevation:       isFocused ? 6 : 2,
+              ...shadow('sm', {
+                color: theme.colors.primary,
+                opacity: isFocused ? 0.18 : 0.06,
+                radius: isFocused ? 12 : 4,
+                offsetY: 4,
+                elevation: isFocused ? 6 : 2,
+              }),
             },
           ]}
         >
@@ -248,6 +325,42 @@ export default function ScanScreen() {
             💡 {currentType.hint}
           </Text>
 
+          {/* ── Voice input row ─────────────────────────────── */}
+          <View style={[styles.voiceRow, { borderTopColor: theme.colors.border }]}>
+            <VoiceButton
+              voiceState={voiceState}
+              isAvailable={isAvailable}
+              onStart={startListening}
+              onStop={voiceState === 'speaking' ? stopSpeaking : stopListening}
+              onReset={resetVoice}
+              disabled={isScanning}
+            />
+            {/* Live transcription preview */}
+            {voiceState === 'listening' && recognizedText ? (
+              <View style={styles.voiceTranscriptWrap}>
+                <Text style={[styles.voiceTranscriptLabel, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
+                  Hearing…
+                </Text>
+                <Text
+                  style={[styles.voiceTranscriptText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 14 }]}
+                  numberOfLines={3}
+                >
+                  {recognizedText}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Voice error message */}
+          {voiceState === 'error' && errorMessage ? (
+            <View style={[styles.voiceErrorBox, { backgroundColor: theme.colors.backgroundMuted }]}>
+              <Ionicons name="information-circle-outline" size={14} color="#E07B20" />
+              <Text style={[styles.voiceErrorText, { fontFamily: theme.fonts.body, color: '#E07B20', fontSize: isLarge ? 13 : 12 }]}>
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
           {/* Scan button */}
@@ -263,17 +376,15 @@ export default function ScanScreen() {
                 styles.scanBtn,
                 {
                   backgroundColor: hasInput && !isScanning ? theme.colors.primary : theme.colors.border,
-                  shadowColor:     theme.colors.primary,
-                  shadowOpacity:   hasInput && !isScanning ? 0.35 : 0,
-                  shadowRadius:    14,
-                  shadowOffset:    { width: 0, height: 5 },
-                  elevation:       hasInput && !isScanning ? 6 : 0,
+                  ...(hasInput && !isScanning
+                    ? shadow('md', { color: theme.colors.primary, opacity: 0.35, radius: 14, offsetY: 5, elevation: 6 })
+                    : {}),
                 },
               ]}
             >
               <Ionicons
                 name={isScanning ? 'radio-outline' : 'shield-checkmark-outline'}
-                size={20}
+                size={IS_WEB ? 17 : 20}
                 color={hasInput && !isScanning ? '#FFFFFF' : theme.colors.textDisabled}
                 style={styles.btnIcon}
               />
@@ -354,6 +465,33 @@ export default function ScanScreen() {
               </View>
             )}
 
+            {/* Report to community */}
+            {(result.risk === 'suspicious' || result.risk === 'dangerous') && (
+              <TouchableOpacity
+                onPress={handleReportCommunity}
+                disabled={reportStatus === 'sending' || reportStatus === 'done'}
+                activeOpacity={0.75}
+                style={[styles.scanAgainBtn, {
+                  borderColor: reportStatus === 'done' ? '#4CAF82' : resultCfg.borderColor,
+                  backgroundColor: reportStatus === 'done' ? '#F0FDF4' : 'transparent',
+                  marginBottom: 8,
+                }]}
+              >
+                <Ionicons
+                  name={reportStatus === 'done' ? 'checkmark-circle' : 'flag-outline'}
+                  size={16}
+                  color={reportStatus === 'done' ? '#2E7D55' : resultCfg.iconColor}
+                />
+                <Text style={[styles.scanAgainText, {
+                  fontFamily: theme.fonts.bodySemibold,
+                  color: reportStatus === 'done' ? '#2E7D55' : resultCfg.iconColor,
+                  fontSize: isLarge ? 15 : 14,
+                }]}>
+                  {reportStatus === 'done' ? `Reported (${reportCount}) — Thank You` : reportStatus === 'sending' ? 'Submitting…' : 'Report as Scam to Community'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Scan again */}
             <TouchableOpacity
               onPress={handleClear}
@@ -365,6 +503,110 @@ export default function ScanScreen() {
               <Ionicons name="refresh-outline" size={16} color={resultCfg.iconColor} />
               <Text style={[styles.scanAgainText, { fontFamily: theme.fonts.bodySemibold, color: resultCfg.iconColor, fontSize: isLarge ? 15 : 14 }]}>
                 {t('scan.result.scanAgain')}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* ── Phone number result card ──────────────────────── */}
+        {phoneResult && (
+          <Animated.View style={[styles.resultCard, {
+            backgroundColor: phoneResult.verdict === 'SAFE' ? '#F0FDF4' : phoneResult.verdict === 'SUSPICIOUS' ? '#FFFBEB' : '#FFF5F5',
+            borderColor: phoneResult.verdict === 'SAFE' ? '#4CAF82' : phoneResult.verdict === 'SUSPICIOUS' ? '#F59E0B' : '#F87171',
+            opacity: resultOpacity,
+            transform: [{ translateY: resultSlide }],
+          }]}>
+            <View style={styles.resultHeaderRow}>
+              <View style={[styles.resultIconWrap, { backgroundColor: phoneResult.verdict === 'SAFE' ? '#4CAF8222' : phoneResult.verdict === 'SUSPICIOUS' ? '#F59E0B22' : '#F8717122' }]}>
+                <Ionicons
+                  name={phoneResult.verdict === 'SAFE' ? 'shield-checkmark' : phoneResult.verdict === 'SUSPICIOUS' ? 'warning' : 'close-circle'}
+                  size={28}
+                  color={phoneResult.verdict === 'SAFE' ? '#2E7D55' : phoneResult.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626'}
+                />
+              </View>
+              <View style={styles.resultHeaderText}>
+                <Badge
+                  variant={phoneResult.verdict.toLowerCase() as any}
+                  label={phoneResult.verdict === 'SAFE' ? 'No Known Risk' : phoneResult.verdict === 'SUSPICIOUS' ? 'Suspicious' : 'Dangerous'}
+                />
+                <Text style={[styles.resultHeadline, {
+                  fontFamily: theme.fonts.headingBold,
+                  color: phoneResult.verdict === 'SAFE' ? '#2E7D55' : phoneResult.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626',
+                  fontSize: isLarge ? 20 : 17,
+                  marginTop: 4,
+                }]}>
+                  {phoneResult.verdict === 'SAFE' ? 'Number Looks Clear' : phoneResult.verdict === 'SUSPICIOUS' ? 'Be Careful With This Number' : 'High Risk Number'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Phone details */}
+            <View style={styles.resultBlock}>
+              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Number</Text>
+              <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.normalized_number || inputContent}</Text>
+            </View>
+
+            {phoneResult.carrier && (
+              <View style={styles.resultBlock}>
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Network</Text>
+                <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.carrier}</Text>
+              </View>
+            )}
+
+            <View style={styles.resultBlock}>
+              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Assessment</Text>
+              <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.reason}</Text>
+            </View>
+
+            {/* Community reports */}
+            <View style={[styles.resultAdviceBox, { backgroundColor: 'rgba(0,0,0,0.03)', borderColor: theme.colors.border }]}>
+              <View style={styles.resultAdviceRow}>
+                <Ionicons name="people-outline" size={16} color={theme.colors.textSecondary} />
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12, marginLeft: 6 }]}>
+                  Community Reports
+                </Text>
+              </View>
+              <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14, marginTop: 4 }]}>
+                {reportCount > 0
+                  ? `${reportCount} ${reportCount === 1 ? 'person has' : 'people have'} reported this number.`
+                  : 'No community reports yet for this number.'}
+              </Text>
+            </View>
+
+            {/* Report button */}
+            <TouchableOpacity
+              onPress={handleReportCommunity}
+              disabled={reportStatus === 'sending' || reportStatus === 'done'}
+              activeOpacity={0.75}
+              style={[styles.scanAgainBtn, {
+                borderColor: reportStatus === 'done' ? '#4CAF82' : phoneResult.verdict === 'SUSPICIOUS' ? '#F59E0B' : '#DC2626',
+                backgroundColor: reportStatus === 'done' ? '#F0FDF4' : 'transparent',
+              }]}
+            >
+              <Ionicons
+                name={reportStatus === 'done' ? 'checkmark-circle' : reportStatus === 'sending' ? 'hourglass-outline' : 'flag-outline'}
+                size={16}
+                color={reportStatus === 'done' ? '#2E7D55' : phoneResult.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626'}
+              />
+              <Text style={[styles.scanAgainText, {
+                fontFamily: theme.fonts.bodySemibold,
+                color: reportStatus === 'done' ? '#2E7D55' : phoneResult.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626',
+                fontSize: isLarge ? 15 : 14,
+              }]}>
+                {reportStatus === 'done' ? 'Reported — Thank You' : reportStatus === 'sending' ? 'Submitting…' : 'Report as Scam to Community'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Scan again */}
+            <TouchableOpacity
+              onPress={handleClear}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              style={[styles.scanAgainBtn, { borderColor: theme.colors.border, marginTop: 8 }]}
+            >
+              <Ionicons name="refresh-outline" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.scanAgainText, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>
+                Check Another Number
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -398,11 +640,11 @@ export default function ScanScreen() {
                 key={scan.id}
                 style={[
                   styles.historyCard,
-                  { backgroundColor: theme.colors.backgroundCard, borderColor: theme.colors.border, shadowColor: '#9FA1FF', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+                  { backgroundColor: theme.colors.backgroundCard, borderColor: theme.colors.border, ...shadow('sm', { opacity: 0.06, radius: 6, offsetY: 2, elevation: 2 }) },
                 ]}
               >
                 <View style={[styles.historyIconWrap, { backgroundColor: theme.colors.backgroundMuted }]}>
-                  <Ionicons name={icon.name} size={20} color={icon.color} />
+                  <Ionicons name={icon.name} size={IS_WEB ? 17 : 20} color={icon.color} />
                 </View>
                 <View style={styles.historyContent}>
                   <Text numberOfLines={1} style={[styles.historyText, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 13 }]}>
@@ -423,7 +665,7 @@ export default function ScanScreen() {
         {/* ── Safety tips ────────────────────────────────────── */}
         <View style={[styles.tipsCard, { backgroundColor: theme.colors.skyLight, borderColor: theme.colors.sky + '80' }]}>
           <View style={styles.tipsHeaderRow}>
-            <Ionicons name="bulb-outline" size={18} color={theme.colors.skyDark} />
+            <Ionicons name="bulb-outline" size={IS_WEB ? 15 : 18} color={theme.colors.skyDark} />
             <Text style={[styles.tipsHeading, { fontFamily: theme.fonts.heading, color: theme.colors.skyDark, fontSize: isLarge ? 15 : 13 }]}>
               {t('scan.tips.title')}
             </Text>
@@ -446,7 +688,7 @@ export default function ScanScreen() {
 // ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:   { flex: 1 },
-  scroll: { paddingHorizontal: 20 },
+  scroll: { paddingHorizontal: IS_WEB ? 14 : 20 },
 
   topBar:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   screenLabel:  { letterSpacing: 1.2, marginBottom: 2 },
@@ -455,18 +697,18 @@ const styles = StyleSheet.create({
   screenSub:    { lineHeight: 22, marginBottom: 20 },
 
   typeScroll: { marginHorizontal: -20, marginBottom: 16 },
-  typeRow:    { paddingHorizontal: 20, gap: 10, paddingBottom: 4 },
-  typeChip:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1.5 },
+  typeRow:    { paddingHorizontal: IS_WEB ? 14 : 20, gap: IS_WEB ? 8 : 10, paddingBottom: 4 },
+  typeChip:   { flexDirection: 'row', alignItems: 'center', gap: IS_WEB ? 5 : 6, paddingVertical: IS_WEB ? 7 : 10, paddingHorizontal: IS_WEB ? 12 : 16, borderRadius: 999, borderWidth: 1.5 },
   typeLabel:  { letterSpacing: 0.1 },
 
-  inputCard:      { borderRadius: 20, padding: 20, marginBottom: 10 },
+  inputCard:      { borderRadius: IS_WEB ? 16 : 20, padding: IS_WEB ? 14 : 20, marginBottom: 10 },
   inputLabelRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   inputLabel:     { flex: 1 },
   clearBtn:       { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   textArea:       { minHeight: 110, lineHeight: 22, marginBottom: 8, padding: 0, ...Platform.select({ android: { textAlignVertical: 'top' } }) },
   hintText:       { lineHeight: 18, marginBottom: 14 },
-  divider:        { height: 1, marginBottom: 16 },
-  scanBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 56, borderRadius: 999, paddingHorizontal: 24 },
+  divider:        { height: 1, marginBottom: IS_WEB ? 12 : 16 },
+  scanBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: IS_WEB ? 46 : 56, borderRadius: 999, paddingHorizontal: IS_WEB ? 18 : 24 },
   btnIcon:        { marginRight: 8 },
   scanBtnText:    { letterSpacing: 0.3 },
 
@@ -492,29 +734,37 @@ const styles = StyleSheet.create({
   detailsBox:       { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)', marginBottom: 14 },
   detailsLabel:     { marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 },
   detailsText:      { lineHeight: 20 },
-  scanAgainBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 20, marginTop: 4 },
+  scanAgainBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1.5, paddingVertical: IS_WEB ? 9 : 12, paddingHorizontal: IS_WEB ? 16 : 20, marginTop: 4 },
   scanAgainText:    { letterSpacing: 0.2 },
 
   sectionTitle: { marginBottom: 12, marginTop: 4, letterSpacing: -0.2 },
 
-  emptyState:   { borderRadius: 20, borderWidth: 1.5, padding: 28, alignItems: 'center', marginBottom: 24 },
-  emptyOrbWrap: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyState:   { borderRadius: IS_WEB ? 16 : 20, borderWidth: 1.5, padding: IS_WEB ? 20 : 28, alignItems: 'center', marginBottom: IS_WEB ? 18 : 24 },
+  emptyOrbWrap: { width: IS_WEB ? 64 : 80, height: IS_WEB ? 64 : 80, borderRadius: IS_WEB ? 32 : 40, alignItems: 'center', justifyContent: 'center', marginBottom: IS_WEB ? 12 : 16 },
   emptyTitle:   { marginBottom: 8, letterSpacing: -0.2 },
   emptySub:     { textAlign: 'center', lineHeight: 21 },
 
-  historyCard:     { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1.5, padding: 14, marginBottom: 10 },
-  historyIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  historyCard:     { flexDirection: 'row', alignItems: 'center', gap: IS_WEB ? 10 : 12, borderRadius: IS_WEB ? 14 : 16, borderWidth: 1.5, padding: IS_WEB ? 10 : 14, marginBottom: 10 },
+  historyIconWrap: { width: IS_WEB ? 36 : 44, height: IS_WEB ? 36 : 44, borderRadius: IS_WEB ? 18 : 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   historyContent:  { flex: 1 },
   historyText:     { marginBottom: 6 },
   historyMeta:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   historyTime:     { marginLeft: 'auto' },
 
-  tipsCard:      { borderRadius: 16, borderWidth: 1, padding: 16, marginTop: 8 },
+  tipsCard:      { borderRadius: IS_WEB ? 14 : 16, borderWidth: 1, padding: IS_WEB ? 12 : 16, marginTop: 8 },
   tipsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   tipsHeading:   { letterSpacing: -0.1 },
   tipRow:        { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 6 },
   tipDot:        { fontSize: 16, lineHeight: 20 },
   tipText:       { flex: 1, lineHeight: 20 },
+
+  // ── Voice input styles ──────────────────────────────────
+  voiceRow:             { flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: 14, paddingBottom: 4, borderTopWidth: 1, marginTop: 8 },
+  voiceTranscriptWrap:  { flex: 1 },
+  voiceTranscriptLabel: { marginBottom: 2 },
+  voiceTranscriptText:  { lineHeight: 20 },
+  voiceErrorBox:        { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, padding: 10, marginTop: 4 },
+  voiceErrorText:       { flex: 1, lineHeight: 18 },
 });
 
 

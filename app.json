@@ -25,7 +25,14 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Phishing Sense needs microphone access to listen to suspicious messages you want to check.",
+          "speechRecognitionPermission": "Phishing Sense needs speech recognition to convert your voice to text for scam analysis."
+        }
+      ]
     ]
   }
 }
