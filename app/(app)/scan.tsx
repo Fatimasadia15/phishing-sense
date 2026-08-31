@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { IS_WEB } from '../../src/theme/responsive';
 import { shadow } from '../../src/theme/tokens';
@@ -23,6 +25,7 @@ import { VoiceButton } from '../../src/components/ui/VoiceButton';
 import { useVoiceAssistant, buildVoiceSummary } from '../../src/services/voice';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { checkPhoneNumber, reportToCommunity, type CheckNumberResponse } from '../../src/services/api';
+import { inferContentType } from '../../src/services/redact';
 import type { ScanResult } from '../../src/constants/mockData';
 
 
@@ -79,6 +82,19 @@ export default function ScanScreen() {
   const hasInput    = inputContent.trim().length > 0;
   const isScanning  = orbState === 'analyzing';
 
+  // ── Manual paste from system clipboard (PRD 4.1) ──────────
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await Clipboard.getStringAsync();
+      if (text && text.trim()) {
+        setInputContent(text.trim());
+        if (orbState === 'idle') setOrbState('listening');
+      }
+    } catch {
+      // Clipboard unavailable (e.g. web permission denied) — no-op
+    }
+  }, [orbState]);
+
   // ── Voice: callback returns text to auto-speak ──────────
   const handleVoiceTextReady = useCallback(async (text: string): Promise<string> => {
     setInputContent(text);
@@ -104,6 +120,59 @@ export default function ScanScreen() {
     startListening, stopListening, speakResult, stopSpeaking, reset: resetVoice,
   } = useVoiceAssistant(language, handleVoiceTextReady);
 
+  // ── Share Intent Route Params ──────────────────────────────
+  const params = useLocalSearchParams<{ sharedText?: string; autoScan?: string; ts?: string }>();
+  const lastProcessedTsRef = useRef<string | null>(null);
+
+  const runScanWithContent = useCallback(async (content: string, type: ScanType) => {
+    if (!content.trim()) return;
+    Keyboard.dismiss();
+    setOrbState('analyzing');
+    setResult(null);
+    setPhoneResult(null);
+    setReportStatus('idle');
+    setReportCount(0);
+    resultOpacity.setValue(0);
+    resultSlide.setValue(20);
+
+    if (type === 'phone') {
+      const phoneRes = await checkPhoneNumber(content.trim());
+      if (phoneRes) {
+        setPhoneResult(phoneRes);
+        setReportCount(phoneRes.community_reports);
+        speakResult(buildVoiceSummary(phoneRes.verdict.toLowerCase() as 'safe' | 'suspicious' | 'dangerous', phoneRes.reason, language));
+      } else {
+        const scanRes = await addScan(content);
+        setResult(scanRes);
+        speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
+      }
+    } else {
+      const scanRes = await addScan(content);
+      setResult(scanRes);
+      speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
+    }
+    setOrbState('result');
+    Animated.parallel([
+      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, [addScan, resultOpacity, resultSlide, speakResult, language]);
+
+  useEffect(() => {
+    if (params.sharedText && params.ts && params.ts !== lastProcessedTsRef.current) {
+      lastProcessedTsRef.current = params.ts;
+      const text = params.sharedText;
+      setInputContent(text);
+      const inferred = inferContentType(text);
+      const targetType: ScanType = inferred === 'url' ? 'url' : (inferred === 'phone' ? 'phone' : (inferred === 'email' ? 'email' : 'message'));
+      setSelectedType(targetType);
+
+      if (params.autoScan === 'true') {
+        runScanWithContent(text, targetType);
+      }
+    }
+  }, [params.sharedText, params.autoScan, params.ts, runScanWithContent]);
+
   // ── Existing scan logic ────────────────────────────────────
   const handleScan = async () => {
     if (!inputContent.trim() || isScanning) return;
@@ -126,10 +195,12 @@ export default function ScanScreen() {
       if (phoneRes) {
         setPhoneResult(phoneRes);
         setReportCount(phoneRes.community_reports);
+        speakResult(buildVoiceSummary(phoneRes.verdict.toLowerCase() as 'safe' | 'suspicious' | 'dangerous', phoneRes.reason, language));
       } else {
         // Fallback to generic scan if backend unavailable
         const scanRes = await addScan(inputContent);
         setResult(scanRes);
+        speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
       }
       setOrbState('result');
       Animated.parallel([
@@ -141,6 +212,7 @@ export default function ScanScreen() {
         const scanRes = await addScan(inputContent);
         setResult(scanRes);
         setOrbState('result');
+        speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
         Animated.parallel([
           Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
           Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
@@ -212,6 +284,7 @@ export default function ScanScreen() {
 
   const recentScans = scanHistory.slice(0, 3);
   const resultCfg   = result ? RESULT_CONFIG[result.risk] : null;
+  const phoneRiskColor = phoneResult?.verdict === 'SAFE' ? '#2E7D55' : phoneResult?.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626';
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -295,6 +368,20 @@ export default function ScanScreen() {
             <Text style={[styles.inputLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 16 : 14 }]}>
               {currentType.label}
             </Text>
+            {!hasInput && (
+              <TouchableOpacity
+                onPress={handlePaste}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[styles.pasteBtn, { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel="Paste from clipboard"
+              >
+                <Ionicons name="clipboard-outline" size={13} color={theme.colors.primaryDark} />
+                <Text style={[styles.pasteBtnText, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primaryDark, fontSize: isLarge ? 13 : 12 }]}>
+                  Paste
+                </Text>
+              </TouchableOpacity>
+            )}
             {hasInput && (
               <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[styles.clearBtn, { backgroundColor: theme.colors.backgroundMuted }]} accessibilityLabel="Clear">
                 <Ionicons name="close" size={14} color={theme.colors.textTertiary} />
@@ -425,18 +512,33 @@ export default function ScanScreen() {
               </View>
             </View>
 
-            {/* Confidence bar */}
+            {/* Risk gauge 0-100 */}
             <View style={styles.confRow}>
               <Text style={[styles.confLabel, { fontFamily: theme.fonts.body, color: resultCfg.iconColor, fontSize: isLarge ? 13 : 12 }]}>
-                Confidence
+                Risk Score
               </Text>
               <View style={[styles.confBarBg, { backgroundColor: resultCfg.borderColor + '33' }]}>
                 <View style={[styles.confBarFill, { width: `${result.confidence}%` as any, backgroundColor: resultCfg.iconColor }]} />
               </View>
               <Text style={[styles.confPct, { fontFamily: theme.fonts.bodySemibold, color: resultCfg.iconColor, fontSize: isLarge ? 13 : 12 }]}>
-                {result.confidence}%
+                {result.confidence}/100
               </Text>
             </View>
+
+            {/* Why — max 2 plain-language bullets (PRD 4.1) */}
+            {result.indicators && result.indicators.length > 0 && (
+              <View style={styles.resultBlock}>
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>What we noticed</Text>
+                {result.indicators.slice(0, 2).map((ind, i) => (
+                  <View key={i} style={styles.indicatorRow}>
+                    <View style={[styles.indicatorDot, { backgroundColor: resultCfg.iconColor }]} />
+                    <Text style={[styles.indicatorText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>
+                      {ind}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* What this means */}
             <View style={styles.resultBlock}>
@@ -538,6 +640,19 @@ export default function ScanScreen() {
                   {phoneResult.verdict === 'SAFE' ? 'Number Looks Clear' : phoneResult.verdict === 'SUSPICIOUS' ? 'Be Careful With This Number' : 'High Risk Number'}
                 </Text>
               </View>
+            </View>
+
+            {/* Risk gauge 0-100 */}
+            <View style={styles.confRow}>
+              <Text style={[styles.confLabel, { fontFamily: theme.fonts.body, color: phoneRiskColor, fontSize: isLarge ? 13 : 12 }]}>
+                Risk Score
+              </Text>
+              <View style={[styles.confBarBg, { backgroundColor: phoneRiskColor + '33' }]}>
+                <View style={[styles.confBarFill, { width: `${Math.min(100, Math.max(0, phoneResult.risk_score))}%` as any, backgroundColor: phoneRiskColor }]} />
+              </View>
+              <Text style={[styles.confPct, { fontFamily: theme.fonts.bodySemibold, color: phoneRiskColor, fontSize: isLarge ? 13 : 12 }]}>
+                {phoneResult.risk_score}/100
+              </Text>
             </View>
 
             {/* Phone details */}
@@ -704,6 +819,8 @@ const styles = StyleSheet.create({
   inputCard:      { borderRadius: IS_WEB ? 16 : 20, padding: IS_WEB ? 14 : 20, marginBottom: 10 },
   inputLabelRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   inputLabel:     { flex: 1 },
+  pasteBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, borderRadius: 14, paddingHorizontal: 10, borderWidth: 1 },
+  pasteBtnText:   { letterSpacing: 0.2 },
   clearBtn:       { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   textArea:       { minHeight: 110, lineHeight: 22, marginBottom: 8, padding: 0, ...Platform.select({ android: { textAlignVertical: 'top' } }) },
   hintText:       { lineHeight: 18, marginBottom: 14 },
@@ -725,7 +842,10 @@ const styles = StyleSheet.create({
   confLabel:        { width: 72 },
   confBarBg:        { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   confBarFill:      { height: 6, borderRadius: 3 },
-  confPct:          { width: 34, textAlign: 'right' },
+  confPct:          { width: 44, textAlign: 'right' },
+  indicatorRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+  indicatorDot:     { width: 7, height: 7, borderRadius: 4, marginTop: 7 },
+  indicatorText:    { flex: 1, lineHeight: 21 },
   resultBlock:      { marginBottom: 12 },
   resultBlockLabel: { marginBottom: 4, letterSpacing: 0.1 },
   resultBlockText:  { lineHeight: 22 },

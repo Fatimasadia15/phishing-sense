@@ -158,11 +158,13 @@ export function toScanResult(
   response: AnalyzeResponse
 ): Omit<ScanResult, 'id' | 'timestamp'> {
   return {
-    content:    originalInput,
-    type:       inferContentType(originalInput),
-    risk:       mapVerdict(response.verdict),
-    confidence: response.risk_score,
-    details:    response.explanation_en,
+    content:       originalInput,
+    type:          inferContentType(originalInput),
+    risk:          mapVerdict(response.verdict),
+    confidence:    response.risk_score,
+    details:       response.explanation_en,
+    indicators:    response.threat_indicators,
+    explanationUr: response.explanation_roman_urdu,
   };
 }
 

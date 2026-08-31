@@ -18,6 +18,13 @@ export default function SplashScreen() {
   const { theme } = useTheme();
   const { t }     = useTranslation();
   const insets    = useSafeAreaInsets();
+  const navigatedRef = useRef(false);
+
+  const navigateNext = () => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    router.replace('/(auth)/onboarding');
+  };
 
   const orbScale    = useRef(new Animated.Value(0.4)).current;
   const orbOpacity  = useRef(new Animated.Value(0)).current;
@@ -59,9 +66,10 @@ export default function SplashScreen() {
         }),
       ]),
       Animated.delay(1400),
-    ]).start(() => {
-      router.replace('/(auth)/onboarding');
-    });
+    ]).start(navigateNext);
+    // Fallback: on web the animation completion callback can fail to fire
+    const timeout = setTimeout(navigateNext, 3000);
+    return () => clearTimeout(timeout);
   }, []);
 
   return (

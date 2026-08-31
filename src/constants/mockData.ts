@@ -8,9 +8,13 @@ export interface ScanResult {
   content:    string;
   type:       'url' | 'email' | 'sms' | 'phone';
   risk:       'safe' | 'suspicious' | 'dangerous';
-  confidence: number;        // 0-100
+  confidence: number;        // 0-100 risk score
   timestamp:  Date;
   details?:   string;
+  /** Plain-language threat indicators (max 2 shown in UI per PRD). */
+  indicators?: string[];
+  /** Roman Urdu explanation from the backend (PRD bilingual requirement). */
+  explanationUr?: string;
   /** Whether this result came from the demo fallback (offline) vs live analysis. */
   isDemoFallback?: boolean;
 }
@@ -199,6 +203,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       risk:       'dangerous',
       confidence: 92,
       details:    '[Demo] This matches a common bank impersonation scam. Real banks in Pakistan never ask you to verify your account via SMS link. Call your bank directly using the number on your card.',
+      indicators: [
+        'Pretends to be your bank and creates fake urgency',
+        'Asks you to "verify" your account through a link',
+      ],
     },
   },
   {
@@ -209,6 +217,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       risk:       'dangerous',
       confidence: 88,
       details:    '[Demo] This matches a fake government programme scam. BISP/Ehsaas never sends unsolicited "you won money" messages. Visit 8171.bisp.gov.pk directly to check eligibility.',
+      indicators: [
+        'Claims free government money you never applied for',
+        'Asks you to click a link to "receive" the payment',
+      ],
     },
   },
   {
@@ -219,6 +231,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       risk:       'suspicious',
       confidence: 74,
       details:    '[Demo] This looks like a delivery tracking scam. Always go to the courier\'s official website directly and enter your tracking number there — never click SMS links.',
+      indicators: [
+        'Delivery notice with a shortened or strange link',
+        'Creates pressure to "confirm" a package you may not expect',
+      ],
     },
   },
   {
@@ -229,6 +245,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       risk:       'dangerous',
       confidence: 95,
       details:    '[Demo] This is asking you to share an OTP or code. No legitimate service ever asks you to send your OTP to someone. This is always a scam — block the sender.',
+      indicators: [
+        'Asks you to share an OTP or verification code',
+        'No real company ever asks for codes by message',
+      ],
     },
   },
   {
@@ -239,6 +259,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       risk:       'safe',
       confidence: 90,
       details:    '[Demo] This appears to be a standard bank transaction notification. These are normally legitimate. Verify the sender number matches your bank\'s official SMS number.',
+      indicators: [
+        'Standard transaction alert with no links or requests',
+        'No action or personal information is requested',
+      ],
     },
   },
 ];
@@ -298,6 +322,10 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
       risk:       'dangerous',
       confidence: Math.min(95, 70 + dangerScore * 5),
       details:    '[Demo] Multiple high-risk indicators detected in this content.',
+      indicators: [
+        'Contains several known scam phrases or fake links',
+        'Tries to push you to act quickly without thinking',
+      ],
       isDemoFallback: true,
     };
   }
@@ -308,6 +336,10 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
       risk:       'suspicious',
       confidence: Math.min(85, 55 + (dangerScore + suspiciousScore) * 5),
       details:    '[Demo] Some suspicious characteristics found. Exercise caution.',
+      indicators: [
+        'Uses offer or urgency language that feels pushy',
+        'Cannot be confirmed as coming from a real source',
+      ],
       isDemoFallback: true,
     };
   }
@@ -317,6 +349,10 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
     risk:       'safe',
     confidence: Math.max(88, 100 - suspiciousScore * 5),
     details:    '[Demo] No significant phishing indicators detected.',
+    indicators: [
+      'No links, codes, or urgent requests found',
+      'Nothing asks for your personal information',
+    ],
     isDemoFallback: true,
   };
 }

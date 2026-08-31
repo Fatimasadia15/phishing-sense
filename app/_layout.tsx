@@ -23,6 +23,7 @@ import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { LanguageProvider }        from '../src/i18n/LanguageContext';
 import { AuthProvider }            from '../src/store/AppContext';
 import { AppProvider }             from '../src/store/AppContext';
+import { ShareIntentHandler }      from '../src/components/ShareIntentHandler';
 import { initI18n, getSavedLanguage, RTL_LANGUAGES } from '../src/i18n/index';
 import { IS_WEB, MAX_CONTENT_WIDTH } from '../src/theme/responsive';
 import type { SupportedLanguage }  from '../src/i18n/index';
@@ -97,6 +98,7 @@ export default function RootLayout() {
             <LanguageProvider initialLanguage={initialLang}>
               <AuthProvider>
                 <AppProvider>
+                  <ShareIntentHandler />
                   <InnerLayout />
                 </AppProvider>
               </AuthProvider>
