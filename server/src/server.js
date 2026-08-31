@@ -13,6 +13,7 @@ const rateLimit        = require('express-rate-limit');
 const { handleAnalyze } = require('./routes/analyze');
 const { handleCheckNumber } = require('./routes/checkNumber');
 const { handleReport, handleCount } = require('./routes/community');
+const { handleChat } = require('./routes/chat');
 const {
   validateAnalyzeRequest,
   validateCheckNumberRequest,
@@ -73,6 +74,9 @@ app.post('/api/analyze', limiter, validateAnalyzeRequest, handleAnalyze);
 // ── Number check endpoint ────────────────────────────────────
 app.post('/api/check-number', limiter, validateCheckNumberRequest, handleCheckNumber);
 
+// ── Sense AI chat endpoint ──────────────────────────────────
+app.post('/api/chat', limiter, handleChat);
+
 // ── Community reporting endpoints ───────────────────────────
 app.post('/api/community/report', limiter, validateCommunityReportRequest, handleReport);
 app.get('/api/community/count', handleCount);
@@ -85,11 +89,12 @@ app.get('/', (_req, res) => {
     endpoints: {
       health:         'GET  /api/health',
       analyze:        'POST /api/analyze',
+      chat:           'POST /api/chat',
       checkNumber:    'POST /api/check-number',
       communityReport:'POST /api/community/report',
       communityCount: 'GET  /api/community/count',
     },
-    usage: 'POST to /api/analyze with { "input": "...", "input_type": "text|link|message" }',
+    usage: 'POST to /api/analyze or /api/chat',
   });
 });
 
@@ -110,6 +115,7 @@ app.listen(PORT, () => {
   console.log(`[Phishing Sense] LLM provider: ${process.env.LLM_PROVIDER || 'none (rules only)'}`);
   console.log(`[Phishing Sense] Health:        GET  http://localhost:${PORT}/api/health`);
   console.log(`[Phishing Sense] Analyze:       POST http://localhost:${PORT}/api/analyze`);
+  console.log(`[Phishing Sense] Chat:          POST http://localhost:${PORT}/api/chat`);
   console.log(`[Phishing Sense] Check Number:  POST http://localhost:${PORT}/api/check-number`);
   console.log(`[Phishing Sense] Report:        POST http://localhost:${PORT}/api/community/report`);
   console.log(`[Phishing Sense] Report Count:  GET  http://localhost:${PORT}/api/community/count`);

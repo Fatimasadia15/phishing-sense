@@ -298,3 +298,34 @@ export async function getCommunityCount(
     return 0;
   }
 }
+
+/**
+ * Send a chat message to Sense AI backend (/api/chat).
+ * Returns response string or null if unavailable.
+ */
+export async function sendChatMessageApi(
+  message: string,
+  language: string = 'en'
+): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, language }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.reply || null;
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}

@@ -15,7 +15,7 @@ import {
   AI_DEFAULT_RESPONSE,
   AI_DEFAULT_RESPONSE_UR,
 } from '../constants/mockData';
-import { analyzeContent, toScanResult, type ApiInputType, type FrontendScanType } from '../services/api';
+import { analyzeContent, toScanResult, sendChatMessageApi, type ApiInputType, type FrontendScanType } from '../services/api';
 
 // ─────────────────────────────────────────────────────────────
 //  Auth Context — mock authentication state
@@ -173,16 +173,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return scan;
   }, []);
 
-  const sendChatMessage = useCallback((text: string, language: string = 'en') => {
+  const sendChatMessage = useCallback(async (text: string, language: string = 'en') => {
     const userMsg: ChatMessage = {
       id: genId(), role: 'user', content: text, timestamp: new Date(),
     };
     setChatMessages(prev => [...prev, userMsg]);
     setThinking(true);
 
-    // Simulate AI thinking time
-    const delay = 900 + Math.random() * 800;
-    setTimeout(() => {
+    try {
+      const apiReply = await sendChatMessageApi(text, language);
+      const replyText = apiReply || getMockAiResponse(text, language);
+      const aiMsg: ChatMessage = {
+        id:        genId(),
+        role:      'assistant',
+        content:   replyText,
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, aiMsg]);
+    } catch {
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
@@ -190,8 +198,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);
+    } finally {
       setThinking(false);
-    }, delay);
+    }
   }, []);
 
   const clearChat = useCallback(() => setChatMessages([]), []);

@@ -143,4 +143,62 @@ Provide your independent analysis in the required JSON format.`;
   }
 }
 
-module.exports = { callLlm, validateLlmOutput, SYSTEM_PROMPT };
+const SYSTEM_PROMPT_CHAT = `You are Sense AI, an expert AI safety and anti-scam assistant for Phishing Sense in Pakistan.
+You provide clear, empowering, and actionable cybersecurity advice to users asking about phishing, fake messages, suspicious links, bank scams (HBL, Meezan, UBL, MCB, JazzCash, Easypaisa), BISP scams, OTP theft, and social media safety.
+
+GUIDELINES:
+- Answer the user's SPECIFIC question directly. Do not give generic stock responses.
+- Match the language of the prompt: if asked in Urdu/Roman Urdu, respond in clear Roman Urdu or Urdu script. If asked in English, respond in English.
+- Use simple, reassuring bullet points (max 3-4 points).
+- Never ask for secrets (passwords, PINs, OTPs).
+- If the user mentions a potential breach, provide emergency steps (call bank, freeze card, change password, report to FIA Cybercrime).`;
+
+/**
+ * Call LLM for Sense AI chat.
+ * Returns response string or null on failure.
+ */
+async function callLlmChat(message, language = 'en') {
+  const provider = process.env.LLM_PROVIDER || 'none';
+  if (provider === 'none') return null;
+
+  const apiKey = process.env.LLM_API_KEY;
+  const apiUrl = process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions';
+  const model  = process.env.LLM_MODEL  || 'gpt-4o-mini';
+
+  if (!apiKey) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT_CHAT },
+          { role: 'user',   content: `[User Preferred Language: ${language}]\n\nQuestion: "${message}"` },
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    return content ? content.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { callLlm, validateLlmOutput, SYSTEM_PROMPT, callLlmChat };
+
