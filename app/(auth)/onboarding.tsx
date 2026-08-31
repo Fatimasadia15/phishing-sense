@@ -4,10 +4,10 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,8 +16,6 @@ import { useTheme } from '../../src/theme/ThemeContext';
 import { Button } from '../../src/components/ui/Button';
 import { LanguageToggle } from '../../src/components/ui/LanguageToggle';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
-
-const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
@@ -47,6 +45,7 @@ export default function OnboardingScreen() {
   const { theme } = useTheme();
   const { t }     = useTranslation();
   const insets    = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [current, setCurrent] = useState(0);
 
@@ -57,7 +56,9 @@ export default function OnboardingScreen() {
 
   const goNext = () => {
     if (current < SLIDES.length - 1) {
-      scrollRef.current?.scrollTo({ x: (current + 1) * width, animated: true });
+      const next = current + 1;
+      setCurrent(next);
+      scrollRef.current?.scrollTo({ x: next * width, animated: true });
     } else {
       router.replace('/(auth)/login');
     }
@@ -69,10 +70,16 @@ export default function OnboardingScreen() {
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       {/* Background Soft Glow */}
       <View
-        style={[
-          styles.glowBackdrop,
-          { backgroundColor: theme.colors.primaryLight },
-        ]}
+        style={{
+          position: 'absolute',
+          top: -width * 0.3,
+          alignSelf: 'center',
+          width: width * 1.2,
+          height: width * 1.2,
+          borderRadius: (width * 1.2) / 2,
+          opacity: 0.45,
+          backgroundColor: theme.colors.primaryLight,
+        }}
       />
 
       {/* Top Bar */}
@@ -210,15 +217,6 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  glowBackdrop: {
-    position: 'absolute',
-    top: -width * 0.3,
-    alignSelf: 'center',
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: (width * 1.2) / 2,
-    opacity: 0.45,
-  },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',

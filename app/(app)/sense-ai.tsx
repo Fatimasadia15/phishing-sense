@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { IS_WEB } from '../../src/theme/responsive';
 import { shadow } from '../../src/theme/tokens';
 import { useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { useVoiceAssistant, detectLanguageForTTS } from '../../src/services/voice';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 import { AI_SUGGESTIONS_EN, AI_SUGGESTIONS_UR } from '../../src/constants/mockData';
 
@@ -80,6 +81,8 @@ export default function SenseAIScreen() {
   const [isFocused, setIsFocused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
+  // When true, the next assistant reply is spoken aloud (voice-initiated chat)
+  const speakNextRef = useRef(false);
 
   const suggestions = language === 'ur' ? AI_SUGGESTIONS_UR : AI_SUGGESTIONS_EN;
   const hasMessages = chatMessages.length > 0;
@@ -95,9 +98,36 @@ export default function SenseAIScreen() {
       Animated.timing(sendScale, { toValue: 1,    duration: 150, useNativeDriver: true }),
     ]).start();
 
-    sendChatMessage(query);
+    sendChatMessage(query, language);
     setInput('');
   };
+
+  // ── Voice input: transcript lands in the input field, then auto-sends ──
+  const handleVoiceTextReady = useCallback((text: string) => {
+    setInput(text);
+    if (isChatThinking) return; // AI busy — keep text in the field for manual send
+    speakNextRef.current = true;
+    // Brief pause so the user sees what was heard before it sends
+    setTimeout(() => {
+      sendChatMessage(text, language);
+      setInput('');
+    }, 900);
+  }, [language, isChatThinking, sendChatMessage]);
+
+  const {
+    voiceState, recognizedText, errorMessage, isAvailable,
+    startListening, stopListening, speakResult, stopSpeaking, reset: resetVoice,
+  } = useVoiceAssistant(language, handleVoiceTextReady);
+
+  // Auto-speak the AI reply for voice-initiated questions
+  useEffect(() => {
+    const lastMsg = chatMessages[chatMessages.length - 1];
+    if (speakNextRef.current && lastMsg && lastMsg.role === 'assistant' && !isChatThinking) {
+      speakNextRef.current = false;
+      const ttsLang = detectLanguageForTTS(lastMsg.content) === 'ur-PK' ? 'ur' : 'en';
+      speakResult(lastMsg.content, ttsLang);
+    }
+  }, [chatMessages, isChatThinking, speakResult]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -408,7 +438,31 @@ export default function SenseAIScreen() {
           </ScrollView>
         )}
 
-        {/* Input field + send button */}
+        {/* Voice state: live transcript / error */}
+        {voiceState === 'listening' && recognizedText ? (
+          <View style={[styles.voicePreviewBox, { backgroundColor: theme.colors.backgroundMuted }]}>
+            <Text style={[styles.voicePreviewLabel, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
+              Hearing…
+            </Text>
+            <Text
+              style={[styles.voicePreviewText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 14 }]}
+              numberOfLines={2}
+            >
+              {recognizedText}
+            </Text>
+          </View>
+        ) : null}
+
+        {voiceState === 'error' && errorMessage ? (
+          <View style={[styles.voicePreviewBox, { backgroundColor: theme.colors.backgroundMuted }]}>
+            <Ionicons name="information-circle-outline" size={14} color="#E07B20" />
+            <Text style={[styles.voiceErrorText, { fontFamily: theme.fonts.body, color: '#E07B20', fontSize: isLarge ? 13 : 12 }]}>
+              {errorMessage}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Input field + mic + send button */}
         <View
           style={[
             styles.inputRow,
@@ -442,6 +496,57 @@ export default function SenseAIScreen() {
             ]}
             accessibilityLabel="Ask Sense AI a question"
           />
+
+          {/* Voice input button */}
+          {isAvailable && (
+            <TouchableOpacity
+              onPress={() => {
+                if (voiceState === 'listening')     stopListening();
+                else if (voiceState === 'speaking')  stopSpeaking();
+                else if (voiceState === 'error' || voiceState === 'result' || voiceState === 'processing') resetVoice();
+                else                                  startListening();
+              }}
+              disabled={isChatThinking}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={
+                voiceState === 'listening' ? 'Stop voice input'
+                : voiceState === 'speaking' ? 'Stop speaking'
+                : 'Ask by voice'
+              }
+              accessibilityState={{ disabled: isChatThinking }}
+              style={[
+                styles.micBtn,
+                {
+                  backgroundColor:
+                    voiceState === 'listening' ? '#EF4444'
+                    : voiceState === 'speaking' ? '#3B82F6'
+                    : voiceState === 'error'    ? '#FFF3E0'
+                    : voiceState === 'result'   ? '#E8F5EE'
+                    : theme.colors.primary,
+                },
+              ]}
+            >
+              <Ionicons
+                name={
+                  voiceState === 'listening'     ? ('mic' as const)
+                  : voiceState === 'speaking'    ? ('volume-high' as const)
+                  : voiceState === 'processing'  ? ('hourglass-outline' as const)
+                  : voiceState === 'result'      ? ('checkmark-circle' as const)
+                  : voiceState === 'error'       ? ('warning' as const)
+                  : ('mic' as const)
+                }
+                size={IS_WEB ? 18 : 20}
+                color={
+                  voiceState === 'listening' ? '#FFFFFF'
+                  : voiceState === 'speaking' ? '#FFFFFF'
+                  : voiceState === 'error'    ? '#E07B20'
+                  : voiceState === 'result'   ? '#2E7D55'
+                  : '#FFFFFF'
+                }
+              />
+            </TouchableOpacity>
+          )}
 
           <Animated.View style={{ transform: [{ scale: sendScale }] }}>
             <TouchableOpacity
@@ -477,7 +582,7 @@ export default function SenseAIScreen() {
             { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 11 : 10 },
           ]}
         >
-          🔒 Ask Sense whenever you're unsure about digital safety
+          🔒 Type or 🎙️ speak your question — English, Urdu, or Roman Urdu
         </Text>
       </View>
 
@@ -696,6 +801,35 @@ const styles = StyleSheet.create({
     alignItems:   'center',
     justifyContent: 'center',
     flexShrink:   0,
+  },
+  micBtn: {
+    width:        IS_WEB ? 36 : 42,
+    height:       IS_WEB ? 36 : 42,
+    borderRadius: IS_WEB ? 18 : 21,
+    alignItems:   'center',
+    justifyContent: 'center',
+    flexShrink:   0,
+  },
+  voicePreviewBox: {
+    flexDirection: 'row',
+    alignItems:    'flex-start',
+    gap:           8,
+    borderRadius:  14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom:  8,
+  },
+  voicePreviewLabel: {
+    letterSpacing: 0.3,
+    marginBottom:  2,
+  },
+  voicePreviewText: {
+    lineHeight: 21,
+    flex:       1,
+  },
+  voiceErrorText: {
+    lineHeight: 18,
+    flex:       1,
   },
   privacyNote: {
     textAlign:   'center',

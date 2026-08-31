@@ -59,8 +59,6 @@ export interface CommunityReportResponse {
   duplicate: boolean;
 }
 
-const API_TIMEOUT = 10000;
-
 // ── API Functions ────────────────────────────────────────────
 
 /**

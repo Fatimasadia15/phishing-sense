@@ -122,6 +122,15 @@ export function useVoiceAssistant(
 
   const timeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalTextRef = useRef('');
+  // Final + latest interim text. On web/Android the last spoken segment is
+  // often still interim when the session ends, so this is the fallback.
+  const anyTextRef = useRef('');
+  // Keep the callback fresh without depending on event re-registration
+  const onTextReadyRef = useRef(onTextReady);
+  onTextReadyRef.current = onTextReady;
+  // Only one mounted hook instance may own an STT session (tabs stay
+  // mounted, so events would otherwise cross-talk between screens).
+  const activeSessionRef = useRef(false);
 
   // ── Check availability on mount ────────────────────────────
   useEffect(() => {
@@ -129,24 +138,30 @@ export function useVoiceAssistant(
     setIsAvailable(available);
     return () => {
       clearListenTimeout();
+      activeSessionRef.current = false;
       ExpoSpeechRecognitionModule.abort();
     };
   }, []);
 
   // ── STT event listeners ────────────────────────────────────
   useSpeechRecognitionEvent('start', () => {
+    if (!activeSessionRef.current) return;
     setVoiceState('listening');
     setErrorMessage('');
     startListenTimeout();
   });
 
   useSpeechRecognitionEvent('end', () => {
+    if (!activeSessionRef.current) return;
+    activeSessionRef.current = false;
     clearListenTimeout();
-    const text = finalTextRef.current.trim();
-    if (text && onTextReady) {
+    // Prefer final results; fall back to interim — the last segment is
+    // frequently still interim when the session ends.
+    const text = finalTextRef.current.trim() || anyTextRef.current.trim();
+    if (text && onTextReadyRef.current) {
       setVoiceState('processing');
       // Await the callback — it may return text to auto-speak
-      Promise.resolve(onTextReady(text))
+      Promise.resolve(onTextReadyRef.current(text))
         .then((speakText) => {
           if (speakText) {
             // Auto-speak the returned text
@@ -167,23 +182,44 @@ export function useVoiceAssistant(
         .catch(() => {
           setVoiceState('result');
         });
-    } else if (voiceState === 'listening') {
-      // Ended without result (silence)
+    } else {
+      // Ended without any captured text (silence)
       setVoiceState('ready');
     }
   });
 
   useSpeechRecognitionEvent('result', (event: any) => {
-    const transcript = event.results?.[0]?.transcript ?? '';
-    if (transcript) {
-      setRecognizedText(transcript);
-      if (event.isFinal) {
-        finalTextRef.current = transcript;
-      }
+    if (!activeSessionRef.current) return;
+    const results = event.results;
+    if (!results || results.length === 0) return;
+
+    // isFinal lives on the event itself (both native and web adapters)
+    const isFinal = event.isFinal === true;
+    const transcripts = (results as any[])
+      .map(r => (r.transcript || '').trim())
+      .filter(Boolean);
+    if (transcripts.length === 0) return;
+    const text = transcripts.join(' ');
+
+    if (isFinal) {
+      // Final segments arrive one utterance at a time — accumulate
+      finalTextRef.current = finalTextRef.current
+        ? finalTextRef.current + ' ' + text
+        : text;
+      anyTextRef.current = finalTextRef.current;
+      setRecognizedText(finalTextRef.current);
+    } else {
+      // Interim: finals so far + the live partial of the current utterance
+      anyTextRef.current = finalTextRef.current
+        ? finalTextRef.current + ' ' + text
+        : text;
+      setRecognizedText(anyTextRef.current);
     }
   });
 
   useSpeechRecognitionEvent('error', (event: any) => {
+    if (!activeSessionRef.current) return;
+    activeSessionRef.current = false;
     clearListenTimeout();
     const code = event.error ?? 'unknown';
     let msg: string;
@@ -233,6 +269,7 @@ export function useVoiceAssistant(
     setRecognizedText('');
     setErrorMessage('');
     finalTextRef.current = '';
+    anyTextRef.current = '';
 
     // Check availability
     const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
@@ -264,14 +301,16 @@ export function useVoiceAssistant(
 
     // Start recognition
     try {
+      activeSessionRef.current = true;
       ExpoSpeechRecognitionModule.start({
         lang:         lang.stt,
         interimResults: true,
-        continuous:   false,
+        continuous:   true,
         contextualStrings: ROMAN_URDU_CONTEXT,
         iosTaskHint: 'dictation',
       });
     } catch (err: any) {
+      activeSessionRef.current = false;
       setErrorMessage('Could not start voice input. Please type or paste the text instead.');
       setVoiceState('error');
     }
@@ -317,12 +356,14 @@ export function useVoiceAssistant(
 
   const reset = useCallback(() => {
     clearListenTimeout();
+    activeSessionRef.current = false;
     ExpoSpeechRecognitionModule.abort();
     Speech.stop();
     setVoiceState('ready');
     setRecognizedText('');
     setErrorMessage('');
     finalTextRef.current = '';
+    anyTextRef.current = '';
   }, []);
 
   return {

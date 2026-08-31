@@ -459,7 +459,7 @@ function analyzePhoneNumber(phoneNumber) {
   }
 
   return {
-    normalized_number: international,
+    normalized_number: normalized,
     international,
     valid: true,
     carrier,

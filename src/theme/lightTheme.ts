@@ -1,4 +1,4 @@
-import { Colors, Spacing, Radius, FontSize, FontWeight, shadow } from './tokens';
+import { Colors, Spacing, Radius, FontSize, FontWeight, shadow, Shadows } from './tokens';
 
 export interface ThemeColors {
   background:        string;

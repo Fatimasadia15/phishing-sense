@@ -13,6 +13,7 @@ import {
   mockScanContent,
   AI_QA_PAIRS,
   AI_DEFAULT_RESPONSE,
+  AI_DEFAULT_RESPONSE_UR,
 } from '../constants/mockData';
 import { analyzeContent, toScanResult } from '../services/api';
 
@@ -97,7 +98,7 @@ interface AppContextValue {
   stats:             { scansToday: number; totalScans: number; threatsBlocked: number };
   addScan:           (content: string) => Promise<ScanResult>;
   chatMessages:      ChatMessage[];
-  sendChatMessage:   (text: string) => void;
+  sendChatMessage:   (text: string, language?: string) => void;
   isChatThinking:    boolean;
   clearChat:         () => void;
   textSize:          TextSizePreference;
@@ -111,11 +112,16 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 let _idCounter = 100;
 const genId = () => String(++_idCounter);
 
-function getMockAiResponse(text: string): string {
+function getMockAiResponse(text: string, language: string): string {
+  // Urdu-script input always gets an Urdu reply, regardless of app language
+  const isUrduScript = /[\u0600-\u06FF\u0750-\u077F]/.test(text);
+  const useUrdu = language === 'ur' || isUrduScript;
   for (const qa of AI_QA_PAIRS) {
-    if (qa.pattern.test(text)) return qa.response;
+    if (qa.pattern.test(text)) {
+      return useUrdu ? (qa.responseUr ?? qa.response) : qa.response;
+    }
   }
-  return AI_DEFAULT_RESPONSE;
+  return useUrdu ? AI_DEFAULT_RESPONSE_UR : AI_DEFAULT_RESPONSE;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -154,7 +160,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return scan;
   }, []);
 
-  const sendChatMessage = useCallback((text: string) => {
+  const sendChatMessage = useCallback((text: string, language: string = 'en') => {
     const userMsg: ChatMessage = {
       id: genId(), role: 'user', content: text, timestamp: new Date(),
     };
@@ -167,7 +173,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
-        content:   getMockAiResponse(text),
+        content:   getMockAiResponse(text, language),
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);

@@ -4,6 +4,7 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  StyleProp,
   ViewStyle,
   TextStyle,
   View,
@@ -30,7 +31,7 @@ interface ButtonProps {
   icon?:      React.ReactNode;
   iconRight?: React.ReactNode;
   fullWidth?: boolean;
-  style?:     ViewStyle;
+  style?:     StyleProp<ViewStyle>;
   textStyle?: TextStyle;
   accessibilityLabel?: string;
 }

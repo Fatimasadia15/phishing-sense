@@ -28,6 +28,14 @@ export default function HomeScreen() {
   const { t }                  = useTranslation();
   const { user }               = useAuth();
   const { scanHistory, textSize, stats } = useApp();
+
+  // Derive protection status from recent scans
+  const latestScan = scanHistory[0];
+  const protectionStatus = latestScan?.risk === 'dangerous'
+    ? { label: t('home.protectionStatus.atRisk'), sub: t('home.protectionStatus.atRiskSub'), color: theme.colors.dangerText, bg: '#FFF5F5', dot: '#DC2626', orbState: 'result' as const }
+    : latestScan?.risk === 'suspicious'
+    ? { label: t('home.protectionStatus.caution'), sub: t('home.protectionStatus.cautionSub'), color: theme.colors.suspiciousText, bg: '#FFFBEB', dot: '#E07B20', orbState: 'result' as const }
+    : { label: t('home.protectionStatus.protected'), sub: t('home.protectionStatus.protectedSub'), color: theme.colors.safeText, bg: theme.colors.mintLight, dot: theme.colors.mintDark, orbState: 'idle' as const };
   const insets                 = useSafeAreaInsets();
   const isLarge                = textSize === 'large';
 
@@ -140,7 +148,7 @@ export default function HomeScreen() {
               },
             ]}
           >
-            {t('home.protectionStatus.protectedSub')}
+            {protectionStatus.sub}
           </Text>
         </View>
 
@@ -155,28 +163,28 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.liveStatusPill,
-                { backgroundColor: theme.colors.mintLight, borderColor: theme.colors.mint },
+                { backgroundColor: protectionStatus.bg, borderColor: protectionStatus.color + '44' },
               ]}
             >
-              <View style={[styles.statusDot, { backgroundColor: theme.colors.mintDark }]} />
+              <View style={[styles.statusDot, { backgroundColor: protectionStatus.dot }]} />
               <Text
                 style={[
                   styles.statusPillText,
                   {
                     fontFamily: theme.fonts.bodySemibold,
-                    color:      theme.colors.safeText,
+                    color:      protectionStatus.color,
                     fontSize:   isLarge ? 13 : 11,
                   },
                 ]}
               >
-                {t('home.protectionStatus.protected')}
+                {protectionStatus.label}
               </Text>
             </View>
           </View>
 
           {/* Living Orb Centerpiece */}
           <View style={styles.orbCenterWrap}>
-            <SenseOrb state="idle" size="lg" />
+            <SenseOrb state={protectionStatus.orbState} size="lg" />
           </View>
 
           {/* Calming Reassurance Subtitle */}

@@ -232,6 +232,12 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
       case 'analyzing': startAnalyzing(); break;
       case 'result':    startResult();    break;
     }
+    return () => {
+      breathAnim.stopAnimation();
+      rotateAnim.stopAnimation();
+      auraAnim.stopAnimation();
+      shimmerAnim.stopAnimation();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
