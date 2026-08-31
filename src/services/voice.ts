@@ -18,10 +18,19 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import * as Speech from 'expo-speech';
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
+
+// Safe import: expo-speech-recognition requires native code that isn't
+// available in Expo Go.  Wrapping in try/catch allows the app to load
+// with voice features gracefully disabled.
+let ExpoSpeechRecognitionModule: any = null;
+let useSpeechRecognitionEvent: any = () => {};
+try {
+  const mod = require('expo-speech-recognition');
+  ExpoSpeechRecognitionModule = mod.ExpoSpeechRecognitionModule;
+  useSpeechRecognitionEvent = mod.useSpeechRecognitionEvent;
+} catch {
+  console.warn('[Voice] expo-speech-recognition not available (Expo Go or missing native module). Voice input disabled.');
+}
 
 // ── Configuration ────────────────────────────────────────────
 
@@ -104,6 +113,18 @@ export type OnTextReadyCallback = (text: string) => string | void | Promise<stri
 // ── Hook ─────────────────────────────────────────────────────
 
 /**
+ * Safe wrapper for useSpeechRecognitionEvent.
+ * Does nothing when the native module isn't loaded (e.g. Expo Go).
+ * Must be called unconditionally at the top of the hook to satisfy
+ * React's Rules of Hooks.
+ */
+function useSafeSpeechRecognitionEvent(event: string, handler: (...args: any[]) => void) {
+  if (ExpoSpeechRecognitionModule) {
+    useSpeechRecognitionEvent(event, handler);
+  }
+}
+
+/**
  * Voice assistant hook — manages the full STT → analysis → TTS pipeline.
  *
  * @param appLanguage  The app's current language ('en' | 'ur').
@@ -134,24 +155,28 @@ export function useVoiceAssistant(
 
   // ── Check availability on mount ────────────────────────────
   useEffect(() => {
+    if (!ExpoSpeechRecognitionModule) {
+      setIsAvailable(false);
+      return;
+    }
     const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
     setIsAvailable(available);
     return () => {
       clearListenTimeout();
       activeSessionRef.current = false;
-      ExpoSpeechRecognitionModule.abort();
+      if (ExpoSpeechRecognitionModule) ExpoSpeechRecognitionModule.abort();
     };
   }, []);
 
   // ── STT event listeners ────────────────────────────────────
-  useSpeechRecognitionEvent('start', () => {
+  useSafeSpeechRecognitionEvent('start', () => {
     if (!activeSessionRef.current) return;
     setVoiceState('listening');
     setErrorMessage('');
     startListenTimeout();
   });
 
-  useSpeechRecognitionEvent('end', () => {
+  useSafeSpeechRecognitionEvent('end', () => {
     if (!activeSessionRef.current) return;
     activeSessionRef.current = false;
     clearListenTimeout();
@@ -188,7 +213,7 @@ export function useVoiceAssistant(
     }
   });
 
-  useSpeechRecognitionEvent('result', (event: any) => {
+  useSafeSpeechRecognitionEvent('result', (event: any) => {
     if (!activeSessionRef.current) return;
     const results = event.results;
     if (!results || results.length === 0) return;
@@ -217,7 +242,7 @@ export function useVoiceAssistant(
     }
   });
 
-  useSpeechRecognitionEvent('error', (event: any) => {
+  useSafeSpeechRecognitionEvent('error', (event: any) => {
     if (!activeSessionRef.current) return;
     activeSessionRef.current = false;
     clearListenTimeout();
@@ -251,7 +276,7 @@ export function useVoiceAssistant(
   function startListenTimeout() {
     clearListenTimeout();
     timeoutRef.current = setTimeout(() => {
-      ExpoSpeechRecognitionModule.stop();
+      if (ExpoSpeechRecognitionModule) ExpoSpeechRecognitionModule.stop();
     }, LISTEN_TIMEOUT_MS);
   }
 
@@ -272,6 +297,11 @@ export function useVoiceAssistant(
     anyTextRef.current = '';
 
     // Check availability
+    if (!ExpoSpeechRecognitionModule) {
+      setErrorMessage('Speech recognition is not available on this device. Please type or paste the text instead.');
+      setVoiceState('error');
+      return;
+    }
     const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
     if (!available) {
       setErrorMessage('Speech recognition is not available on this device. Please type or paste the text instead.');
@@ -318,7 +348,7 @@ export function useVoiceAssistant(
 
   const stopListening = useCallback(() => {
     clearListenTimeout();
-    ExpoSpeechRecognitionModule.stop();
+    if (ExpoSpeechRecognitionModule) ExpoSpeechRecognitionModule.stop();
   }, []);
 
   const speakResult = useCallback(async (text: string, language?: string) => {
@@ -357,7 +387,7 @@ export function useVoiceAssistant(
   const reset = useCallback(() => {
     clearListenTimeout();
     activeSessionRef.current = false;
-    ExpoSpeechRecognitionModule.abort();
+    if (ExpoSpeechRecognitionModule) ExpoSpeechRecognitionModule.abort();
     Speech.stop();
     setVoiceState('ready');
     setRecognizedText('');

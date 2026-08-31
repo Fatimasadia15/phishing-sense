@@ -2,18 +2,17 @@
 //  POST /api/check-number — Pakistani Phone Number Check
 // ─────────────────────────────────────────────────────────────
 
-const { analyzePhoneNumber } = require('../engine/rules');
+const { analyzePhoneNumber, normalizePhoneNumber } = require('../engine/rules');
 const { getCommunityReportCount } = require('./community');
 
 async function handleCheckNumber(req, res) {
   try {
     const { phone_number } = req.body;
-
-    const result = analyzePhoneNumber(phone_number);
-
-    if (result.normalized_number) {
-      result.community_reports = await getCommunityReportCount(result.normalized_number);
-    }
+    const { normalized } = normalizePhoneNumber(phone_number);
+    const communityReports = normalized
+      ? await getCommunityReportCount(normalized)
+      : 0;
+    const result = analyzePhoneNumber(phone_number, communityReports);
 
     res.json(result);
   } catch (err) {

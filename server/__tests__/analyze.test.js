@@ -6,7 +6,17 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { analyzeWithRules, extractDomain, isUrlShortener, checkLookalike, hasSuspiciousTld, isTrustedDomain } = require('../src/engine/rules');
+const {
+  analyzeWithRules,
+  analyzePhoneNumber,
+  extractUrls,
+  extractDomain,
+  isUrlShortener,
+  checkLookalike,
+  hasSuspiciousTld,
+  isTrustedDomain,
+} = require('../src/engine/rules');
+const { clampRiskScore, verdictForScore } = require('../src/engine/risk');
 const { redactSensitive, containsSensitiveData, MASK } = require('../src/engine/redact');
 const { validateLlmOutput } = require('../src/engine/llm');
 const { combineResults } = require('../src/engine/combine');
@@ -341,6 +351,18 @@ describe('extractDomain', () => {
   });
 });
 
+describe('extractUrls', () => {
+  it('extracts explicit URLs and bare domains from a message', () => {
+    const urls = extractUrls('Open https://safe.example.com/info or verify at hbl-secure-login.xyz/verify.');
+    assert.deepEqual(urls, ['https://safe.example.com/info', 'hbl-secure-login.xyz/verify']);
+  });
+
+  it('deduplicates repeated URL candidates', () => {
+    const urls = extractUrls('Visit https://example.xyz/login then https://example.xyz/login again.');
+    assert.deepEqual(urls, ['https://example.xyz/login']);
+  });
+});
+
 describe('isUrlShortener', () => {
   it('detects bit.ly', () => {
     assert.ok(isUrlShortener('bit.ly'));
@@ -441,6 +463,77 @@ describe('analyzeWithRules — full analysis', () => {
   it('detects URL shortener', () => {
     const result = analyzeWithRules('Click here: https://bit.ly/h8l-update', 'link');
     assert.ok(result.indicators.some(i => i.includes('shortener')));
+  });
+});
+
+describe('analyzeWithRules — calibrated scoring', () => {
+  it('marks a bare phishing domain with an account-verification prompt as dangerous', () => {
+    const result = analyzeWithRules('Verify your account at paypal-secure-login.xyz/verify', 'message');
+    assert.equal(result.verdict, 'DANGEROUS');
+    assert.ok(result.ruleScore >= 71);
+    assert.ok(result.indicators.some(i => i.includes('mimics "paypal"')));
+  });
+
+  it('caps risk from multiple suspicious URLs', () => {
+    const result = analyzeWithRules(
+      'https://paypal-secure-login.xyz/verify http://bit.ly/offer https://apple-login.tk/update',
+      'message'
+    );
+    assert.equal(result.ruleScore, 60);
+    assert.equal(result.verdict, 'SUSPICIOUS');
+  });
+
+  it('does not let a trusted URL cancel OTP and urgency signals', () => {
+    const result = analyzeWithRules('URGENT: Please send your OTP now. Visit https://www.google.com to verify.', 'message');
+    assert.equal(result.verdict, 'SUSPICIOUS');
+    assert.ok(result.indicators.some(i => i.includes('credentials')));
+    assert.ok(result.indicators.some(i => i.includes('urgent/panic')));
+  });
+
+  it('marks a phishing combination with a suspicious link, impersonation, urgency, and OTP request as dangerous', () => {
+    const result = analyzeWithRules(
+      'URGENT HBL alert: Your account has been suspended. Verify now at hbl-secure-login.xyz/verify and send your OTP.',
+      'message'
+    );
+    assert.equal(result.verdict, 'DANGEROUS');
+    assert.ok(result.ruleScore >= 71);
+  });
+});
+
+describe('canonical risk bands', () => {
+  it('keeps exact PRD verdict boundaries stable', () => {
+    assert.equal(verdictForScore(30), 'SAFE');
+    assert.equal(verdictForScore(31), 'SUSPICIOUS');
+    assert.equal(verdictForScore(70), 'SUSPICIOUS');
+    assert.equal(verdictForScore(71), 'DANGEROUS');
+  });
+
+  it('clamps scores before assigning a verdict', () => {
+    assert.equal(clampRiskScore(-5), 0);
+    assert.equal(clampRiskScore(150), 100);
+    assert.equal(clampRiskScore(Number.NaN), 0);
+  });
+});
+
+describe('analyzePhoneNumber — uncertainty', () => {
+  it('does not present a valid unreported number as proof of legitimacy', () => {
+    const result = analyzePhoneNumber('03011234567');
+    assert.equal(result.verdict, 'SAFE');
+    assert.match(result.reason, /No community reports are known/);
+    assert.match(result.reason, /does not prove the caller is legitimate/);
+  });
+
+  it('marks a known high-risk number as dangerous', () => {
+    const result = analyzePhoneNumber('03001234567');
+    assert.equal(result.verdict, 'DANGEROUS');
+    assert.ok(result.risk_score >= 71);
+    assert.match(result.reason, /known high-risk scam record/);
+  });
+
+  it('keeps invalid number formats unverified rather than legitimate', () => {
+    const result = analyzePhoneNumber('not-a-number');
+    assert.equal(result.verdict, 'SAFE');
+    assert.match(result.reason, /legitimacy cannot be assessed/);
   });
 });
 

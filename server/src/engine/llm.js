@@ -4,6 +4,8 @@
 //  Falls back gracefully when the LLM is unavailable.
 // ─────────────────────────────────────────────────────────────
 
+const { clampRiskScore, isScoreAlignedWithVerdict } = require('./risk');
+
 const SYSTEM_PROMPT = `You are Phishing Sense, an AI safety assistant for Pakistan.
 You analyze suspicious text, messages, links, and phone numbers for fraud risk.
 You understand English, Urdu (اردو), and Roman Urdu.
@@ -38,19 +40,17 @@ function validateLlmOutput(raw) {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
     // Validate required fields
-    if (typeof parsed.risk_score !== 'number') return null;
+    if (typeof parsed.risk_score !== 'number' || !Number.isFinite(parsed.risk_score)) return null;
     if (parsed.risk_score < 0 || parsed.risk_score > 100) return null;
 
     const validVerdicts = ['SAFE', 'SUSPICIOUS', 'DANGEROUS'];
     if (!validVerdicts.includes(parsed.verdict)) return null;
 
-    // Ensure verdict aligns with score
-    if (parsed.risk_score <= 30 && parsed.verdict !== 'SAFE') return null;
-    if (parsed.risk_score >= 71 && parsed.verdict !== 'DANGEROUS') return null;
-    if (parsed.risk_score > 30 && parsed.risk_score <= 70 && parsed.verdict !== 'SUSPICIOUS') return null;
+    const riskScore = clampRiskScore(parsed.risk_score);
+    if (!isScoreAlignedWithVerdict(riskScore, parsed.verdict)) return null;
 
     return {
-      risk_score: Math.round(parsed.risk_score),
+      risk_score: riskScore,
       verdict: parsed.verdict,
       explanation_en: String(parsed.explanation_en || '').slice(0, 2000),
       explanation_roman_urdu: String(parsed.explanation_roman_urdu || '').slice(0, 2000),

@@ -3,6 +3,8 @@
 //  Deterministic checks that run even when the LLM is offline.
 // ─────────────────────────────────────────────────────────────
 
+const { clampRiskScore, verdictForScore } = require('./risk');
+
 // ── URL Shorteners ───────────────────────────────────────────
 const URL_SHORTENERS = [
   'bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'ow.ly',
@@ -125,6 +127,33 @@ const PK_PHONE_PREFIXES = {
 //  Helpers
 // ─────────────────────────────────────────────────────────────
 
+const URL_WITH_SCHEME_RE = /\bhttps?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
+const BARE_DOMAIN_RE = /(?:^|[\s(])((?:www\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{2,5})?(?:[/?#][^\s<>"{}|\\^`[\]]*)?)/gi;
+const TRAILING_URL_PUNCTUATION_RE = /[.,!?;:)\]}]+$/;
+
+function cleanUrlCandidate(candidate) {
+  return candidate.trim().replace(TRAILING_URL_PUNCTUATION_RE, '');
+}
+
+/** Extract explicit URLs and plausible bare domains from text. */
+function extractUrls(text) {
+  const urls = [];
+  const seen = new Set();
+
+  const addUrl = (candidate) => {
+    const cleaned = cleanUrlCandidate(candidate);
+    const key = cleaned.toLowerCase();
+    if (!cleaned || seen.has(key)) return;
+    seen.add(key);
+    urls.push(cleaned);
+  };
+
+  for (const match of text.matchAll(URL_WITH_SCHEME_RE)) addUrl(match[0]);
+  for (const match of text.matchAll(BARE_DOMAIN_RE)) addUrl(match[1]);
+
+  return urls;
+}
+
 /** Extract domain from a URL string */
 function extractDomain(input) {
   try {
@@ -204,99 +233,118 @@ function normalize(input) {
  */
 function analyzeWithRules(input, inputType) {
   const text = normalize(input);
-  const lower = text.toLowerCase();
   const indicators = [];
-  let riskPoints = 0; // accumulate risk; mapped to 0-100 at the end
+  let riskPoints = 0;
+
+  const addIndicator = (indicator) => {
+    if (!indicators.includes(indicator)) indicators.push(indicator);
+  };
 
   // ── 1. URL analysis ──────────────────────────────────────
-  const urlMatch = text.match(/https?:\/\/[^\s<>"{}|\\^`\[\]]+/i) ||
-                   (inputType === 'link' ? text.match(/[a-z0-9-]+\.[a-z]{2,}(?:\/\S*)?/i) : null);
-  let domain = null;
+  const urls = extractUrls(text);
+  const analyzedDomains = new Set();
+  let urlRiskPoints = 0;
+  let hasSuspiciousUrl = false;
 
-  if (urlMatch) {
-    domain = extractDomain(urlMatch[0]);
+  for (const candidate of urls) {
+    const domain = extractDomain(candidate);
+    if (!domain || analyzedDomains.has(domain)) continue;
+    analyzedDomains.add(domain);
 
-    if (domain) {
-      // URL shortener
-      if (isUrlShortener(domain)) {
-        indicators.push(`URL uses a link shortener (${domain}) — hides the real destination`);
-        riskPoints += 15;
-      }
+    let domainRiskPoints = 0;
 
-      // Suspicious TLD
-      if (hasSuspiciousTld(domain)) {
-        const tld = SUSPICIOUS_TLDS.find(t => domain.endsWith(t));
-        indicators.push(`Domain uses a suspicious TLD (${tld})`);
-        riskPoints += 15;
-      }
-
-      // Lookalike
-      const lookalike = checkLookalike(domain);
-      if (lookalike) {
-        indicators.push(`Domain mimics "${lookalike.target}": ${lookalike.reason}`);
-        riskPoints += 25;
-      }
-
-      // Trusted domain (reduces risk)
-      if (isTrustedDomain(domain)) {
-        riskPoints -= 20;
-      }
-
-      // No HTTPS
-      if (urlMatch[0].startsWith('http://') && !urlMatch[0].startsWith('https://')) {
-        indicators.push('Link uses HTTP instead of HTTPS (not encrypted)');
-        riskPoints += 8;
-      }
-
-      // Excessive subdomains
-      const subdomains = domain.split('.');
-      if (subdomains.length > 4) {
-        indicators.push('URL has an unusually high number of subdomains');
-        riskPoints += 10;
-      }
-
-      // IP address as domain
-      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
-        indicators.push('Link points to a raw IP address instead of a domain name');
-        riskPoints += 20;
-      }
+    if (isUrlShortener(domain)) {
+      addIndicator(`URL uses a link shortener (${domain}) — hides the real destination`);
+      domainRiskPoints += 15;
     }
+
+    if (hasSuspiciousTld(domain)) {
+      const tld = SUSPICIOUS_TLDS.find(t => domain.endsWith(t));
+      addIndicator(`Domain uses a suspicious TLD (${tld})`);
+      domainRiskPoints += 15;
+    }
+
+    const lookalike = checkLookalike(domain);
+    if (lookalike) {
+      addIndicator(`Domain mimics "${lookalike.target}": ${lookalike.reason}`);
+      domainRiskPoints += 25;
+    }
+
+    if (candidate.toLowerCase().startsWith('http://')) {
+      addIndicator('Link uses HTTP instead of HTTPS (not encrypted)');
+      domainRiskPoints += 8;
+    }
+
+    const subdomains = domain.split('.');
+    if (subdomains.length > 4) {
+      addIndicator('URL has an unusually high number of subdomains');
+      domainRiskPoints += 10;
+    }
+
+    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(domain)) {
+      addIndicator('Link points to a raw IP address instead of a domain name');
+      domainRiskPoints += 20;
+    }
+
+    const urlPath = candidate.toLowerCase();
+    if (/(?:login|verify|secure|update|confirm|account|banking)/i.test(urlPath) && !isTrustedDomain(domain)) {
+      addIndicator('URL path contains sensitive action keywords on an untrusted domain');
+      domainRiskPoints += 12;
+    }
+
+    if (domainRiskPoints > 0) hasSuspiciousUrl = true;
+    urlRiskPoints += domainRiskPoints;
   }
+
+  riskPoints += Math.min(50, urlRiskPoints);
 
   // ── 2. Urgent / panic language ───────────────────────────
   const urgencyHits = URGENCY_PATTERNS.filter(p => p.test(text));
   if (urgencyHits.length > 0) {
-    indicators.push(`Message uses urgent/panic language (${urgencyHits.length} instance${urgencyHits.length > 1 ? 's' : ''})`);
+    addIndicator(`Message uses urgent/panic language (${urgencyHits.length} instance${urgencyHits.length > 1 ? 's' : ''})`);
     riskPoints += Math.min(20, urgencyHits.length * 8);
   }
 
   // ── 3. Credential / OTP requests ─────────────────────────
   const credHits = CREDENTIAL_REQUEST_PATTERNS.filter(p => p.test(text));
   if (credHits.length > 0) {
-    indicators.push('Message asks for sensitive credentials (OTP/PIN/password)');
+    addIndicator('Message asks for sensitive credentials (OTP/PIN/password)');
     riskPoints += 25;
   }
 
   // ── 4. Scam wording ──────────────────────────────────────
   const scamHits = SCAM_KEYWORDS.filter(p => p.test(text));
   if (scamHits.length > 0) {
-    indicators.push(`Contains known scam/phrasing patterns (${scamHits.length} match${scamHits.length > 1 ? 'es' : ''})`);
+    addIndicator(`Contains known scam/phrasing patterns (${scamHits.length} match${scamHits.length > 1 ? 'es' : ''})`);
     riskPoints += Math.min(25, scamHits.length * 10);
   }
 
   // ── 5. Government / bank impersonation ───────────────────
   const impHits = IMPERSONATION_PATTERNS.filter(p => p.test(text));
   if (impHits.length > 0) {
-    indicators.push('Message may impersonate a government body or bank');
+    addIndicator('Message may impersonate a government body or bank');
     riskPoints += 20;
   }
 
-  // ── 6. Pakistani phone-number analysis ───────────────────
+  // ── 6. High-signal combinations ───────────────────────────
+  if (hasSuspiciousUrl && credHits.length > 0) {
+    addIndicator('A suspicious link is combined with a request for credentials');
+    riskPoints += 20;
+  }
+  if (hasSuspiciousUrl && urgencyHits.length > 0) {
+    addIndicator('A suspicious link is paired with pressure to act quickly');
+    riskPoints += 15;
+  }
+  if (hasSuspiciousUrl && impHits.length > 0) {
+    addIndicator('A suspicious link is paired with possible bank or government impersonation');
+    riskPoints += 15;
+  }
+
+  // ── 7. Pakistani phone-number analysis ───────────────────
   if (inputType === 'text' || PK_PHONE_REGEX.test(text)) {
     const phoneMatch = text.match(PK_PHONE_REGEX);
     if (phoneMatch) {
       const rawPhone = phoneMatch[0].replace(/[\s-]/g, '');
-      // Normalize to 03XX format
       let normalized = rawPhone;
       if (rawPhone.startsWith('+92')) normalized = '0' + rawPhone.slice(3);
       else if (rawPhone.startsWith('0092')) normalized = '0' + rawPhone.slice(4);
@@ -305,45 +353,30 @@ function analyzeWithRules(input, inputType) {
       const carrier = PK_PHONE_PREFIXES[prefix];
 
       if (carrier) {
-        indicators.push(`Pakistani mobile number detected (${carrier} network) — heuristic only, not a verified scam report`);
+        addIndicator(`Pakistani mobile number detected (${carrier} network) — format alone cannot verify the caller`);
       } else {
-        indicators.push('Pakistani mobile number detected — unable to identify carrier');
+        addIndicator('Pakistani mobile number detected — format alone cannot verify the caller');
       }
-      // Phone number alone is weak evidence
       riskPoints += 5;
-    }
-  }
-
-  // ── 7. Suspicious link patterns in the URL path ──────────
-  if (urlMatch) {
-    const urlPath = urlMatch[0].toLowerCase();
-    if (/(?:login|verify|secure|update|confirm|account|banking)/i.test(urlPath) && domain && !isTrustedDomain(domain)) {
-      indicators.push('URL path contains sensitive action keywords on an untrusted domain');
-      riskPoints += 12;
     }
   }
 
   // ── 8. Excessive punctuation / ALL CAPS ──────────────────
   const capsRatio = (text.match(/[A-Z]/g) || []).length / Math.max(text.length, 1);
   if (capsRatio > 0.5 && text.length > 20) {
-    indicators.push('Message uses excessive capital letters (shouting)');
+    addIndicator('Message uses excessive capital letters (shouting)');
     riskPoints += 5;
   }
 
-  // ── Map accumulated points to 0-100 scale ────────────────
-  const ruleScore = Math.max(0, Math.min(100, riskPoints * 1.2));
-
-  let verdict;
-  if (ruleScore <= 30) verdict = 'SAFE';
-  else if (ruleScore <= 70) verdict = 'SUSPICIOUS';
-  else verdict = 'DANGEROUS';
+  const ruleScore = clampRiskScore(riskPoints * 1.2);
+  const verdict = verdictForScore(ruleScore);
 
   // Build a redacted version for LLM use
   const { redactSensitive } = require('./redact');
   const redactedInput = redactSensitive(text);
 
   return {
-    ruleScore: Math.round(ruleScore),
+    ruleScore,
     verdict,
     indicators,
     redactedInput,
@@ -402,7 +435,7 @@ function normalizePhoneNumber(raw) {
  *   community_reports: number,
  * }}
  */
-function analyzePhoneNumber(phoneNumber) {
+function analyzePhoneNumber(phoneNumber, communityReports = 0) {
   const { normalized, international, valid } = normalizePhoneNumber(phoneNumber);
 
   if (!valid) {
@@ -412,51 +445,53 @@ function analyzePhoneNumber(phoneNumber) {
       valid: false,
       carrier: null,
       risk_score: 0,
-      verdict: 'SAFE',
-      reason: 'This does not match a valid Pakistani mobile number format.',
-      reason_roman_urdu: 'Yeh Pakistani mobile number ke format se match nahi karta.',
+      verdict: verdictForScore(0),
+      reason: 'This does not match a Pakistani mobile number format, so its legitimacy cannot be assessed.',
+      reason_roman_urdu: 'Yeh Pakistani mobile number ke format se match nahi karta, is liye iski legitimacy check nahi ho sakti.',
       community_reports: 0,
     };
   }
 
   const prefix = normalized.slice(0, 4);
   const carrier = PK_PHONE_PREFIXES[prefix] || null;
-
-  let riskPoints = 0;
+  const reportCount = Number.isFinite(communityReports)
+    ? Math.max(0, Math.trunc(communityReports))
+    : 0;
   const reasons = [];
   const reasonsUr = [];
+  let riskPoints = 0;
 
   if (carrier) {
-    reasons.push(`Valid Pakistani mobile number on the ${carrier} network.`);
-    reasonsUr.push(`Yeh ${carrier} network ka valid Pakistani number hai.`);
+    reasons.push(`This is a Pakistani mobile number on the ${carrier} network.`);
+    reasonsUr.push(`Yeh ${carrier} network ka Pakistani mobile number hai.`);
   } else {
-    reasons.push('Valid Pakistani mobile number format, but carrier could not be identified.');
-    reasonsUr.push('Format valid hai lekin carrier ki shanakht nahi ho saki.');
+    reasons.push('This has a valid Pakistani mobile number format, but its carrier could not be identified.');
+    reasonsUr.push('Is Pakistani mobile number ka format valid hai lekin carrier ki shanakht nahi ho saki.');
     riskPoints += 5;
   }
 
   // Known demo/scam numbers for testing
   const KNOWN_SCAM_NUMBERS = ['03001234567', '03119876543'];
   if (KNOWN_SCAM_NUMBERS.includes(normalized)) {
-    riskPoints += 40;
-    reasons.push('This number matches a known demo scam number.');
-    reasonsUr.push('Yeh number mashhoor demo scam number se match karta hai.');
+    riskPoints += 70;
+    reasons.push('This number matches a known high-risk scam record.');
+    reasonsUr.push('Yeh number mashhoor high-risk scam record se match karta hai.');
   }
 
-  const score = Math.max(0, Math.min(100, Math.round(riskPoints * 1.2)));
-  let verdict;
-  if (score <= 30) verdict = 'SAFE';
-  else if (score <= 70) verdict = 'SUSPICIOUS';
-  else verdict = 'DANGEROUS';
-
-  let reason, reasonUr;
-  if (score === 0) {
-    reason = 'No known risk found for this number.';
-    reasonUr = 'Is number ka koi mashhoor khatra nahi mila.';
-  } else {
-    reason = reasons.join(' ');
-    reasonUr = reasonsUr.join(' ');
+  if (reportCount > 0) {
+    riskPoints += Math.min(50, 25 + reportCount * 5);
+    reasons.push(`${reportCount} community ${reportCount === 1 ? 'report has' : 'reports have'} been recorded for this number.`);
+    reasonsUr.push(`Is number ke liye community mein ${reportCount} report ${reportCount === 1 ? 'darj hui hai' : 'darj hui hain'}.`);
   }
+
+  const score = clampRiskScore(riskPoints * 1.2);
+  const verdict = verdictForScore(score);
+  const reason = reasons.length > 1
+    ? reasons.join(' ')
+    : `No community reports are known for this number. ${carrier ? `It uses the ${carrier} network, but` : 'Its format is valid, but'} a valid number format or carrier does not prove the caller is legitimate; verify independently before responding.`;
+  const reasonUr = reasonsUr.length > 1
+    ? reasonsUr.join(' ')
+    : 'Is number ke liye koi community report maloom nahi hai. Valid format ya carrier se caller ki legitimacy sabit nahi hoti; jawab dene se pehle khud tasdeeq karein.';
 
   return {
     normalized_number: normalized,
@@ -467,7 +502,7 @@ function analyzePhoneNumber(phoneNumber) {
     verdict,
     reason,
     reason_roman_urdu: reasonUr,
-    community_reports: 0,
+    community_reports: reportCount,
   };
 }
 
@@ -475,6 +510,7 @@ module.exports = {
   analyzeWithRules,
   analyzePhoneNumber,
   normalizePhoneNumber,
+  extractUrls,
   extractDomain,
   isUrlShortener,
   checkLookalike,

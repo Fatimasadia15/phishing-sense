@@ -11,25 +11,38 @@
 //  When backend is unavailable, falls back to local demo engine.
 // ─────────────────────────────────────────────────────────────
 
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { ScanResult } from '../constants/mockData';
 import { redactSensitive, inferContentType } from './redact';
 
 // ── Configuration ────────────────────────────────────────────
-// Use the machine's LAN IP for physical device testing.
-// For simulator/emulator, localhost works.
-const API_BASE_URL =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:3000' // Android emulator maps to host
-    : 'http://localhost:3000';
+function normalizeApiBaseUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return value.trim().replace(/\/+$/, '');
+}
 
+function resolveApiBaseUrl(): string | null {
+  const configuredUrl = normalizeApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl);
+  if (configuredUrl) return configuredUrl;
+
+  if (!__DEV__) return null;
+  return Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000'
+    : 'http://localhost:3000';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 const API_TIMEOUT = 10000;
 
 // ── Types ────────────────────────────────────────────────────
 
+export type ApiInputType = 'text' | 'link' | 'message';
+export type FrontendScanType = 'url' | 'message' | 'email' | 'phone';
+
 export interface AnalyzeRequest {
   input:      string;
-  input_type: 'text' | 'link' | 'message';
+  input_type: ApiInputType;
 }
 
 export interface AnalyzeResponse {
@@ -39,6 +52,10 @@ export interface AnalyzeResponse {
   explanation_roman_urdu: string;
   threat_indicators:     string[];
 }
+
+export type AnalyzeOutcome =
+  | { kind: 'success'; response: AnalyzeResponse }
+  | { kind: 'unavailable'; reason: 'not_configured' | 'server_error' | 'timeout' | 'network_error' };
 
 export interface CheckNumberResponse {
   normalized_number: string | null;
@@ -61,26 +78,31 @@ export interface CommunityReportResponse {
 
 // ── API Functions ────────────────────────────────────────────
 
+function inferApiInputType(input: string): ApiInputType {
+  const inferredType = inferContentType(input);
+  if (inferredType === 'url') return 'link';
+  if (inferredType === 'email' || inferredType === 'sms') return 'message';
+  return 'text';
+}
+
 /**
  * Call the backend analyze endpoint.
  *
  * **Privacy**: The input is redacted client-side before being
- * sent over the wire.  OTPs, PINs, passwords, CNICs, and credit
+ * sent over the wire. OTPs, PINs, passwords, CNICs, and credit
  * card numbers are masked so they never reach the backend or any
  * external LLM.
- *
- * Returns null if the backend is unavailable.
  */
 export async function analyzeContent(
   input: string,
-  inputType?: 'text' | 'link' | 'message'
-): Promise<AnalyzeResponse | null> {
-  // ── Client-side redaction: strip secrets before submission ──
+  inputType?: ApiInputType
+): Promise<AnalyzeOutcome> {
+  if (!API_BASE_URL) {
+    return { kind: 'unavailable', reason: 'not_configured' };
+  }
+
   const redactedInput = redactSensitive(input);
-
-  // Auto-detect type if not explicitly provided
-  const resolvedType = inputType ?? inferContentType(input);
-
+  const resolvedType = inputType ?? inferApiInputType(input);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
@@ -88,30 +110,24 @@ export async function analyzeContent(
     const response = await fetch(`${API_BASE_URL}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        input: redactedInput,     // ← redacted, not raw
-        input_type: resolvedType,
-      }),
+      body: JSON.stringify({ input: redactedInput, input_type: resolvedType }),
       signal: controller.signal,
     });
 
-    clearTimeout(timeout);
-
     if (!response.ok) {
       console.warn(`[API] Server returned ${response.status}`);
-      return null;
+      return { kind: 'unavailable', reason: 'server_error' };
     }
 
-    const data: AnalyzeResponse = await response.json();
-    return data;
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
-      console.warn('[API] Request timed out');
-    } else {
-      console.warn('[API] Backend unavailable:', err.message);
-    }
+    return { kind: 'success', response: await response.json() as AnalyzeResponse };
+  } catch (error: unknown) {
+    const reason = error instanceof Error && error.name === 'AbortError'
+      ? 'timeout'
+      : 'network_error';
+    console.warn(`[API] Backend unavailable: ${reason}`);
+    return { kind: 'unavailable', reason };
+  } finally {
     clearTimeout(timeout);
-    return null;
   }
 }
 
@@ -119,6 +135,8 @@ export async function analyzeContent(
  * Check if the backend server is reachable.
  */
 export async function isBackendAvailable(): Promise<boolean> {
+  if (!API_BASE_URL) return false;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3000);
 
@@ -148,18 +166,26 @@ function mapVerdict(verdict: string): ScanResult['risk'] {
   }
 }
 
+function mapScanType(scanType: FrontendScanType): ScanResult['type'] {
+  switch (scanType) {
+    case 'url': return 'url';
+    case 'email': return 'email';
+    case 'phone': return 'phone';
+    default: return 'sms';
+  }
+}
+
 /**
- * Convert an API response + original input into a ScanResult.
- * The original (un-redacted) input is stored for display so the
- * user sees what they pasted, not the masked version.
+ * Convert an API response and original input into a ScanResult.
  */
 export function toScanResult(
   originalInput: string,
-  response: AnalyzeResponse
+  response: AnalyzeResponse,
+  scanType: FrontendScanType
 ): Omit<ScanResult, 'id' | 'timestamp'> {
   return {
     content:       originalInput,
-    type:          inferContentType(originalInput),
+    type:          mapScanType(scanType),
     risk:          mapVerdict(response.verdict),
     confidence:    response.risk_score,
     details:       response.explanation_en,
@@ -177,6 +203,8 @@ export function toScanResult(
 export async function checkPhoneNumber(
   phoneNumber: string
 ): Promise<CheckNumberResponse | null> {
+  if (!API_BASE_URL) return null;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
@@ -213,6 +241,8 @@ export async function reportToCommunity(
   contentType: 'text' | 'link' | 'phone',
   identifier: string
 ): Promise<CommunityReportResponse | null> {
+  if (!API_BASE_URL) return null;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
@@ -246,6 +276,8 @@ export async function reportToCommunity(
 export async function getCommunityCount(
   identifier: string
 ): Promise<number> {
+  if (!API_BASE_URL) return 0;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 

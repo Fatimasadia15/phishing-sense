@@ -15,7 +15,7 @@ import {
   AI_DEFAULT_RESPONSE,
   AI_DEFAULT_RESPONSE_UR,
 } from '../constants/mockData';
-import { analyzeContent, toScanResult } from '../services/api';
+import { analyzeContent, toScanResult, type ApiInputType, type FrontendScanType } from '../services/api';
 
 // ─────────────────────────────────────────────────────────────
 //  Auth Context — mock authentication state
@@ -96,7 +96,7 @@ export type TextSizePreference = 'normal' | 'large';
 interface AppContextValue {
   scanHistory:       ScanResult[];
   stats:             { scansToday: number; totalScans: number; threatsBlocked: number };
-  addScan:           (content: string) => Promise<ScanResult>;
+  addScan:           (content: string, scanType?: FrontendScanType) => Promise<ScanResult>;
   chatMessages:      ChatMessage[];
   sendChatMessage:   (text: string, language?: string) => void;
   isChatThinking:    boolean;
@@ -111,6 +111,19 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 
 let _idCounter = 100;
 const genId = () => String(++_idCounter);
+
+function toApiInputType(scanType: FrontendScanType): ApiInputType {
+  if (scanType === 'url') return 'link';
+  if (scanType === 'message' || scanType === 'email') return 'message';
+  return 'text';
+}
+
+function toResultType(scanType: FrontendScanType): ScanResult['type'] {
+  if (scanType === 'url') return 'url';
+  if (scanType === 'email') return 'email';
+  if (scanType === 'phone') return 'phone';
+  return 'sms';
+}
 
 function getMockAiResponse(text: string, language: string): string {
   // Urdu-script input always gets an Urdu reply, regardless of app language
@@ -132,21 +145,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [textSize, setTextSizeState]    = useState<TextSizePreference>('normal');
   const [notificationsOn, setNotificationsOn] = useState(true);
 
-  const addScan = useCallback(async (content: string): Promise<ScanResult> => {
+  const addScan = useCallback(async (
+    content: string,
+    scanType: FrontendScanType = 'message'
+  ): Promise<ScanResult> => {
     let raw: Omit<ScanResult, 'id' | 'timestamp'>;
 
-    // Try backend API first
     try {
-      const apiResponse = await analyzeContent(content, 'text');
-      if (apiResponse) {
-        raw = toScanResult(content, apiResponse);
+      const outcome = await analyzeContent(content, toApiInputType(scanType));
+      if (outcome.kind === 'success') {
+        raw = toScanResult(content, outcome.response, scanType);
       } else {
-        // Backend unavailable — fall back to local mock engine
-        raw = mockScanContent(content);
+        raw = { ...mockScanContent(content), type: toResultType(scanType), isDemoFallback: true };
       }
     } catch {
-      // Any unexpected error — fall back to local mock engine
-      raw = mockScanContent(content);
+      raw = { ...mockScanContent(content), type: toResultType(scanType), isDemoFallback: true };
     }
 
     const scan: ScanResult = { ...raw, id: genId(), timestamp: new Date() };

@@ -1,7 +1,4 @@
-// ─────────────────────────────────────────────────────────────
-//  Risk Combination Logic
-//  Merges rule-based and LLM results with a safety-biased policy.
-// ─────────────────────────────────────────────────────────────
+const { clampRiskScore, verdictForScore } = require('./risk');
 
 /**
  * Combine rule-based and LLM analysis into a final result.
@@ -17,11 +14,13 @@
  * @returns {object} - Final normalized response
  */
 function combineResults(ruleResult, llmResult) {
+  const ruleScore = clampRiskScore(ruleResult.ruleScore);
+
   // If no LLM result, return rule-based analysis
   if (!llmResult) {
     return {
-      risk_score: ruleResult.ruleScore,
-      verdict: ruleResult.verdict,
+      risk_score: ruleScore,
+      verdict: verdictForScore(ruleScore),
       explanation_en: buildExplanationEn(ruleResult),
       explanation_roman_urdu: buildExplanationRomanUrdu(ruleResult),
       threat_indicators: ruleResult.indicators,
@@ -29,14 +28,8 @@ function combineResults(ruleResult, llmResult) {
     };
   }
 
-  // Safety-biased combination
-  // Take the higher (more cautious) score
-  let finalScore = Math.max(ruleResult.ruleScore, llmResult.risk_score);
-
-  // If rule engine found strong danger, don't let LLM downgrade below SUSPICIOUS
-  if (ruleResult.ruleScore >= 71 && llmResult.risk_score < 31) {
-    finalScore = Math.max(finalScore, 40); // at least SUSPICIOUS
-  }
+  // Safety-biased combination: take the higher (more cautious) score.
+  const finalScore = clampRiskScore(Math.max(ruleScore, llmResult.risk_score));
 
   // Merge threat indicators (deduplicated)
   const allIndicators = [...new Set([
@@ -44,19 +37,13 @@ function combineResults(ruleResult, llmResult) {
     ...llmResult.threat_indicators,
   ])];
 
-  // Determine verdict from final score
-  let verdict;
-  if (finalScore <= 30) verdict = 'SAFE';
-  else if (finalScore <= 70) verdict = 'SUSPICIOUS';
-  else verdict = 'DANGEROUS';
-
   // Use LLM explanations if available (they're richer), else generate from rules
   const explanation_en = llmResult.explanation_en || buildExplanationEn(ruleResult);
   const explanation_roman_urdu = llmResult.explanation_roman_urdu || buildExplanationRomanUrdu(ruleResult);
 
   return {
     risk_score: finalScore,
-    verdict,
+    verdict: verdictForScore(finalScore),
     explanation_en,
     explanation_roman_urdu,
     threat_indicators: allIndicators,

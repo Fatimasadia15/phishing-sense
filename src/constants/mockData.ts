@@ -258,10 +258,10 @@ const DEMO_SCENARIOS: DemoScenario[] = [
       type:       'sms',
       risk:       'safe',
       confidence: 90,
-      details:    '[Demo] This appears to be a standard bank transaction notification. These are normally legitimate. Verify the sender number matches your bank\'s official SMS number.',
+      details:    '[Offline limited analysis] No major warning signs detected in this limited offline check. This is not a verified safe result — confirm the sender through official channels.',
       indicators: [
-        'Standard transaction alert with no links or requests',
-        'No action or personal information is requested',
+        'No major warning signs were found by the limited offline checks',
+        'Verify the sender independently before sharing information',
       ],
     },
   },
@@ -348,10 +348,10 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
     content, type,
     risk:       'safe',
     confidence: Math.max(88, 100 - suspiciousScore * 5),
-    details:    '[Demo] No significant phishing indicators detected.',
+    details:    '[Offline limited analysis] No major warning signs detected in this limited offline check. This is not a verified safe result.',
     indicators: [
-      'No links, codes, or urgent requests found',
-      'Nothing asks for your personal information',
+      'No major warning signs were found by the limited offline checks',
+      'Verify the sender independently before sharing information',
     ],
     isDemoFallback: true,
   };

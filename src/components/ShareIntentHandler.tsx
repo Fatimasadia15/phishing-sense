@@ -1,7 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useShareIntent } from 'expo-share-intent';
+
+// Safe import: expo-share-intent requires native code that isn't
+// available in Expo Go.  Wrapping in try/catch prevents the app
+// from crashing on load.
+let useShareIntent: any = null;
+try {
+  useShareIntent = require('expo-share-intent').useShareIntent;
+} catch {
+  console.warn('[ShareIntent] expo-share-intent not available (Expo Go or missing native module). Incoming share disabled.');
+}
+
+/**
+ * Safe wrapper that returns inert defaults when the native module
+ * is unavailable.  Called unconditionally to satisfy React's Rules
+ * of Hooks.
+ */
+function useSafeShareIntent() {
+  if (useShareIntent) {
+    return useShareIntent();
+  }
+  return { hasShareIntent: false, shareIntent: null, resetShareIntent: () => {}, error: null };
+}
 
 /**
  * ShareIntentHandler
@@ -18,7 +39,7 @@ import { useShareIntent } from 'expo-share-intent';
  */
 export function ShareIntentHandler() {
   const router = useRouter();
-  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useSafeShareIntent();
   const processingRef = useRef(false);
 
   useEffect(() => {
