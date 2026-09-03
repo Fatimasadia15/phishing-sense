@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -27,6 +28,9 @@ import { ShareIntentHandler }      from '../src/components/ShareIntentHandler';
 import { initI18n, getSavedLanguage, RTL_LANGUAGES } from '../src/i18n/index';
 import { IS_WEB, MAX_CONTENT_WIDTH } from '../src/theme/responsive';
 import type { SupportedLanguage }  from '../src/i18n/index';
+
+// Complete any pending web authentication sessions
+WebBrowser.maybeCompleteAuthSession();
 
 // Keep native splash visible until we're ready
 SplashScreen.preventAutoHideAsync();

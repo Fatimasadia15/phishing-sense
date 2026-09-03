@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -7,12 +7,18 @@ import { useTheme } from '../../src/theme/ThemeContext';
 import { shadow } from '../../src/theme/tokens';
 import { IS_WEB } from '../../src/theme/responsive';
 import { useApp } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
 
 export default function AppLayout() {
-  const { theme }    = useTheme();
-  const { t }        = useTranslation();
-  const { textSize } = useApp();
-  const isLarge      = textSize === 'large';
+  const { theme }                      = useTheme();
+  const { t }                          = useTranslation();
+  const { textSize }                   = useApp();
+  const { isAuthenticated, isLoading } = useAuth();
+  const isLarge                        = textSize === 'large';
+
+  if (!isLoading && !isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <Tabs

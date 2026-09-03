@@ -168,6 +168,138 @@ function buildPhoneShareMessage(r: CheckNumberResponse, t: TFunction): string {
   return lines.join('\n');
 }
 
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  suggestedType?: ScanType;
+}
+
+export function validateScanTypeInput(content: string, type: ScanType): ValidationResult {
+  const trimmed = content.trim();
+  if (!trimmed) return { valid: true };
+
+  const lower = trimmed.toLowerCase();
+
+  // 1. URL tab restriction
+  if (type === 'url') {
+    const isExplicitUrl = lower.startsWith('http://') || lower.startsWith('https://');
+    const isDomainPattern = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/\S*)?$/i.test(trimmed);
+    const hasSpace = /\s/.test(trimmed);
+    const hasEmailAt = lower.includes('@');
+    const isPurePhone = /^\+?[\d\s\-()]{7,20}$/.test(trimmed) && trimmed.replace(/\D/g, '').length >= 7 && !/[a-zA-Z]/.test(trimmed);
+
+    if (hasEmailAt) {
+      return {
+        valid: false,
+        error: 'This tab is for URLs only. You entered an email address. Please switch to the Email tab.',
+        suggestedType: 'email',
+      };
+    }
+    if (isPurePhone) {
+      return {
+        valid: false,
+        error: 'This tab is for URLs only. You entered a phone number. Please switch to the Phone tab.',
+        suggestedType: 'phone',
+      };
+    }
+    if (hasSpace || (!isExplicitUrl && !isDomainPattern)) {
+      return {
+        valid: false,
+        error: 'Invalid URL format. Please enter a valid link (e.g. https://example.com or domain.com).',
+      };
+    }
+  }
+
+  // 2. Email tab restriction
+  if (type === 'email') {
+    const hasEmailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(trimmed) || lower.includes('@');
+    const isExplicitUrlWithoutEmail = (lower.startsWith('http://') || lower.startsWith('https://') || /^([a-zA-Z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i.test(trimmed)) && !lower.includes('@') && !/\s/.test(trimmed);
+    const isPurePhone = /^\+?[\d\s\-()]{7,20}$/.test(trimmed) && !lower.includes('@') && trimmed.replace(/\D/g, '').length >= 7 && !/[a-zA-Z]/.test(trimmed);
+
+    if (isExplicitUrlWithoutEmail) {
+      return {
+        valid: false,
+        error: 'This tab is for Emails only. You entered a web link. Please switch to the Link tab.',
+        suggestedType: 'url',
+      };
+    }
+    if (isPurePhone) {
+      return {
+        valid: false,
+        error: 'This tab is for Emails only. You entered a phone number. Please switch to the Phone tab.',
+        suggestedType: 'phone',
+      };
+    }
+    if (!hasEmailPattern) {
+      return {
+        valid: false,
+        error: 'Invalid Email. Please enter a valid email address (e.g. user@domain.com) or email content.',
+      };
+    }
+  }
+
+  // 3. Phone tab restriction
+  if (type === 'phone') {
+    const isExplicitUrl = (lower.startsWith('http://') || lower.startsWith('https://') || /^([a-zA-Z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i.test(trimmed)) && !/\s/.test(trimmed);
+    const isEmail = lower.includes('@');
+    const isPhonePattern = /^\+?[\d\s\-()]{7,20}$/.test(trimmed);
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    const hasLetters = /[a-zA-Z]/.test(trimmed);
+
+    if (isExplicitUrl) {
+      return {
+        valid: false,
+        error: 'This tab is for Phone numbers only. You entered a web link. Please switch to the Link tab.',
+        suggestedType: 'url',
+      };
+    }
+    if (isEmail) {
+      return {
+        valid: false,
+        error: 'This tab is for Phone numbers only. You entered an email address. Please switch to the Email tab.',
+        suggestedType: 'email',
+      };
+    }
+    if (hasLetters || !isPhonePattern || digitsOnly.length < 7 || digitsOnly.length > 15) {
+      return {
+        valid: false,
+        error: 'Invalid Phone Number. Please enter a valid phone number (e.g. +92 300 1234567 or 03001234567).',
+      };
+    }
+  }
+
+  // 4. SMS / Message tab restriction
+  if (type === 'message') {
+    const isExplicitUrl = (lower.startsWith('http://') || lower.startsWith('https://') || /^([a-zA-Z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i.test(trimmed)) && !/\s/.test(trimmed);
+    const isStandaloneEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed);
+    const isStandalonePhone = /^\+?[\d\s\-()]{7,20}$/.test(trimmed) && trimmed.replace(/\D/g, '').length >= 7 && !/[a-zA-Z]/.test(trimmed);
+
+    if (isExplicitUrl) {
+      return {
+        valid: false,
+        error: 'You entered a standalone link. Please switch to the Link tab to scan web links.',
+        suggestedType: 'url',
+      };
+    }
+    if (isStandaloneEmail) {
+      return {
+        valid: false,
+        error: 'You entered an Email address. Please switch to the Email tab to scan emails.',
+        suggestedType: 'email',
+      };
+    }
+    if (isStandalonePhone) {
+      return {
+        valid: false,
+        error: 'You entered a Phone number. Please switch to the Phone tab to check phone numbers.',
+        suggestedType: 'phone',
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 export default function ScanScreen() {
   const { theme }                          = useTheme();
   const { t }                              = useTranslation();
@@ -176,14 +308,16 @@ export default function ScanScreen() {
   const insets                             = useSafeAreaInsets();
   const isLarge                            = textSize === 'large';
 
-  const [selectedType, setSelectedType] = useState<ScanType>('url');
-  const [inputContent, setInputContent] = useState('');
-  const [orbState,     setOrbState]     = useState<OrbState>('idle');
-  const [result,       setResult]       = useState<ScanResult | null>(null);
-  const [isFocused,    setIsFocused]    = useState(false);
-  const [phoneResult,  setPhoneResult]  = useState<CheckNumberResponse | null>(null);
-  const [reportStatus, setReportStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
-  const [reportCount,  setReportCount]  = useState(0);
+  const [selectedType,    setSelectedType]    = useState<ScanType>('url');
+  const [inputContent,    setInputContent]    = useState('');
+  const [orbState,        setOrbState]        = useState<OrbState>('idle');
+  const [result,          setResult]          = useState<ScanResult | null>(null);
+  const [isFocused,       setIsFocused]       = useState(false);
+  const [phoneResult,     setPhoneResult]     = useState<CheckNumberResponse | null>(null);
+  const [reportStatus,    setReportStatus]    = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const [reportCount,     setReportCount]     = useState(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [suggestedTab,    setSuggestedTab]    = useState<ScanType | null>(null);
 
   const btnScale      = useRef(new Animated.Value(1)).current;
   const resultOpacity = useRef(new Animated.Value(0)).current;
@@ -241,6 +375,17 @@ export default function ScanScreen() {
 
   const runScanWithContent = useCallback(async (content: string, type: ScanType) => {
     if (!content.trim()) return;
+
+    const val = validateScanTypeInput(content, type);
+    if (!val.valid) {
+      setValidationError(val.error || 'Invalid input for selected tab.');
+      setSuggestedTab(val.suggestedType || null);
+      setOrbState('idle');
+      return;
+    }
+
+    setValidationError(null);
+    setSuggestedTab(null);
     Keyboard.dismiss();
     setOrbState('analyzing');
     setResult(null);
@@ -291,6 +436,16 @@ export default function ScanScreen() {
   // ── Existing scan logic ────────────────────────────────────
   const handleScan = async () => {
     if (!inputContent.trim() || isScanning) return;
+    setValidationError(null);
+    setSuggestedTab(null);
+
+    const val = validateScanTypeInput(inputContent, selectedType);
+    if (!val.valid) {
+      setValidationError(val.error || 'Invalid input for selected tab.');
+      setSuggestedTab(val.suggestedType || null);
+      return;
+    }
+
     Keyboard.dismiss();
     Animated.sequence([
       Animated.timing(btnScale, { toValue: 0.95, duration: 80,  useNativeDriver: USE_NATIVE_DRIVER }),
@@ -317,6 +472,8 @@ export default function ScanScreen() {
 
   const handleClear = () => {
     setInputContent('');
+    setValidationError(null);
+    setSuggestedTab(null);
     setResult(null);
     setPhoneResult(null);
     setReportStatus('idle');
@@ -347,6 +504,8 @@ export default function ScanScreen() {
 
   const handleTypeSelect = (type: ScanType) => {
     setSelectedType(type);
+    setValidationError(null);
+    setSuggestedTab(null);
     if (result) handleClear();
     else if (orbState !== 'idle') setOrbState('idle');
   };
@@ -501,6 +660,10 @@ export default function ScanScreen() {
             value={inputContent}
             onChangeText={(txt) => {
               setInputContent(txt);
+              if (validationError) {
+                setValidationError(null);
+                setSuggestedTab(null);
+              }
               if (txt.length > 0 && orbState === 'idle')     setOrbState('listening');
               if (txt.length === 0 && orbState !== 'result') setOrbState('idle');
             }}
@@ -514,6 +677,29 @@ export default function ScanScreen() {
             style={[styles.textArea, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 16 : 15 }]}
             accessibilityLabel={t('scan.inputFor', { type: currentType.label })}
           />
+
+          {validationError ? (
+            <View style={[styles.validationErrorBox, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
+              <Ionicons name="alert-circle" size={18} color="#DC2626" style={{ marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.validationErrorText, { fontFamily: theme.fonts.bodyMedium, color: '#991B1B', fontSize: isLarge ? 14 : 13 }]}>
+                  {validationError}
+                </Text>
+                {suggestedTab ? (
+                  <TouchableOpacity
+                    onPress={() => handleTypeSelect(suggestedTab)}
+                    activeOpacity={0.8}
+                    style={[styles.suggestedTabBtn, { backgroundColor: theme.colors.primary }]}
+                  >
+                    <Ionicons name="arrow-forward-circle-outline" size={15} color="#FFFFFF" />
+                    <Text style={[styles.suggestedTabText, { fontFamily: theme.fonts.bodySemibold, color: '#FFFFFF', fontSize: isLarge ? 13 : 12 }]}>
+                      Switch to {getScanTypes(t).find(s => s.id === suggestedTab)?.label}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           <Text style={[styles.hintText, { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 13 : 12 }]}>
             💡 {currentType.hint}
@@ -1036,6 +1222,12 @@ const styles = StyleSheet.create({
   voiceTranscriptText:  { lineHeight: 20 },
   voiceErrorBox:        { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, padding: 10, marginTop: 4 },
   voiceErrorText:       { flex: 1, lineHeight: 18 },
+
+  // ── Tab Validation styles ───────────────────────────────
+  validationErrorBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 12, borderWidth: 1, padding: 12, marginTop: 8, marginBottom: 12 },
+  validationErrorText:  { lineHeight: 19 },
+  suggestedTabBtn:      { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, marginTop: 8 },
+  suggestedTabText:     { letterSpacing: 0.2 },
 });
 
 

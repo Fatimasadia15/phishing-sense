@@ -236,6 +236,45 @@ function inferDemoType(content: string): ScanResult['type'] {
  */
 export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'timestamp'> {
   const lower = content.toLowerCase();
+  const type = inferDemoType(content);
+
+  // ── Check phone numbers (555-01XX reserved lines, toll-free, known scams) ──────
+  if (type === 'phone' || /^\+?[\d\s\-()]{7,20}$/.test(content.trim())) {
+    const rawClean = content.replace(/\D/g, '');
+    const is555_01 = /55501\d{2}$/.test(rawClean) || /555-?01\d{2}/.test(content);
+    const isTollFree = /^1?(800|888|877|866|855|844|833)/.test(rawClean);
+    const KNOWN_SCAM_NUMBERS = ['03001234567', '03119876543', '18005550199', '8005550199', '18005550100', '8005550100'];
+
+    if (is555_01 || KNOWN_SCAM_NUMBERS.includes(rawClean)) {
+      return {
+        content,
+        type: 'phone',
+        risk: 'dangerous',
+        confidence: 95,
+        details: '[Offline Check] Uses an official reserved 555-01XX line in North America frequently flagged for automated robocalls, bank imposter phishing, and urgent OTP scams.',
+        indicators: [
+          'Reserved 555-01XX test/spoofing line commonly used in robocall scams',
+          'High risk number reported for bank impersonation and OTP theft',
+        ],
+        isDemoFallback: true,
+      };
+    }
+
+    if (isTollFree) {
+      return {
+        content,
+        type: 'phone',
+        risk: 'suspicious',
+        confidence: 65,
+        details: '[Offline Check] Toll-free international number detected (+1 800-series). Frequently mimicked by automated robocalls and impersonation scams.',
+        indicators: [
+          'Toll-free number format often mimicked by automated robocalls',
+          'Verify official organization details before answering or returning calls',
+        ],
+        isDemoFallback: true,
+      };
+    }
+  }
 
   // ── Check deterministic demo scenarios first ──────────────
   for (const scenario of DEMO_SCENARIOS) {
@@ -261,7 +300,6 @@ export function mockScanContent(content: string): Omit<ScanResult, 'id' | 'times
 
   const dangerScore    = dangerSigns.filter(s => lower.includes(s)).length;
   const suspiciousScore = suspiciousSigns.filter(s => lower.includes(s)).length;
-  const type           = inferDemoType(content);
 
   if (dangerScore >= 2) {
     return {

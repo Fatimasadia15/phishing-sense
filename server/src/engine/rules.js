@@ -384,16 +384,18 @@ function analyzeWithRules(input, inputType) {
 }
 
 /**
- * Normalize a Pakistani phone number to 03XX format.
- * Accepts: 03001234567, +923001234567, 00923001234567, with spaces/dashes.
+ * Normalize a phone number (Pakistani or International).
+ * Accepts: 03001234567, +923001234567, +1 (800) 555-0199, etc.
  *
  * @param {string} raw
- * @returns {{ normalized: string|null, international: string|null, valid: boolean }}
+ * @returns {{ normalized: string|null, international: string|null, valid: boolean, country: string|null }}
  */
 function normalizePhoneNumber(raw) {
-  if (!raw || typeof raw !== 'string') return { normalized: null, international: null, valid: false };
+  if (!raw || typeof raw !== 'string') return { normalized: null, international: null, valid: false, country: null };
 
-  const stripped = raw.replace(/[\s\-()]/g, '');
+  const clean = raw.trim();
+  const stripped = clean.replace(/[\s\-()]/g, '');
+  const digitsOnly = clean.replace(/\D/g, '');
 
   let local = null;
   if (/^\+92\d{10}$/.test(stripped)) {
@@ -408,21 +410,35 @@ function normalizePhoneNumber(raw) {
     local = '0' + stripped;
   }
 
-  if (!local || !/^03\d{9}$/.test(local)) {
-    return { normalized: null, international: null, valid: false };
+  if (local && /^03\d{9}$/.test(local)) {
+    return {
+      normalized: local,
+      international: '+92' + local.slice(1),
+      valid: true,
+      country: 'PK',
+    };
   }
 
-  return {
-    normalized: local,
-    international: '+92' + local.slice(1),
-    valid: true,
-  };
+  // Check valid international numbers (e.g. +1 (800) 555-0199 or 18005550199)
+  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+    const intl = stripped.startsWith('+') ? '+' + digitsOnly : '+' + digitsOnly;
+    const isNorthAmerica = intl.startsWith('+1') || digitsOnly.length === 11 && digitsOnly.startsWith('1');
+    return {
+      normalized: intl,
+      international: intl,
+      valid: true,
+      country: isNorthAmerica ? 'US/CA' : 'INTL',
+    };
+  }
+
+  return { normalized: null, international: null, valid: false, country: null };
 }
 
 /**
- * Analyze a Pakistani phone number for risk.
+ * Analyze a phone number (Pakistani or International) for risk.
  *
  * @param {string} phoneNumber - Raw phone input
+ * @param {number} communityReports - Number of community reports
  * @returns {{
  *   normalized_number: string|null,
  *   international: string|null,
@@ -436,9 +452,9 @@ function normalizePhoneNumber(raw) {
  * }}
  */
 function analyzePhoneNumber(phoneNumber, communityReports = 0) {
-  const { normalized, international, valid } = normalizePhoneNumber(phoneNumber);
+  const { normalized, international, valid, country } = normalizePhoneNumber(phoneNumber);
 
-  if (!valid) {
+  if (!valid || !normalized) {
     return {
       normalized_number: null,
       international: null,
@@ -446,33 +462,62 @@ function analyzePhoneNumber(phoneNumber, communityReports = 0) {
       carrier: null,
       risk_score: 0,
       verdict: verdictForScore(0),
-      reason: 'This does not match a Pakistani mobile number format, so its legitimacy cannot be assessed.',
-      reason_roman_urdu: 'Yeh Pakistani mobile number ke format se match nahi karta, is liye iski legitimacy check nahi ho sakti.',
+      reason: 'This does not match a valid phone number format, so its legitimacy cannot be assessed.',
+      reason_roman_urdu: 'Yeh valid phone number ke format se match nahi karta, is liye iski legitimacy check nahi ho sakti.',
       community_reports: 0,
     };
   }
 
-  const prefix = normalized.slice(0, 4);
-  const carrier = PK_PHONE_PREFIXES[prefix] || null;
   const reportCount = Number.isFinite(communityReports)
     ? Math.max(0, Math.trunc(communityReports))
     : 0;
   const reasons = [];
   const reasonsUr = [];
   let riskPoints = 0;
+  let carrier = null;
 
-  if (carrier) {
-    reasons.push(`This is a Pakistani mobile number on the ${carrier} network.`);
-    reasonsUr.push(`Yeh ${carrier} network ka Pakistani mobile number hai.`);
+  if (country === 'PK') {
+    const prefix = normalized.slice(0, 4);
+    carrier = PK_PHONE_PREFIXES[prefix] || null;
+    if (carrier) {
+      reasons.push(`This is a Pakistani mobile number on the ${carrier} network.`);
+      reasonsUr.push(`Yeh ${carrier} network ka Pakistani mobile number hai.`);
+    } else {
+      reasons.push('This has a valid Pakistani mobile number format, but its carrier could not be identified.');
+      reasonsUr.push('Is Pakistani mobile number ka format valid hai lekin carrier ki shanakht nahi ho saki.');
+      riskPoints += 5;
+    }
   } else {
-    reasons.push('This has a valid Pakistani mobile number format, but its carrier could not be identified.');
-    reasonsUr.push('Is Pakistani mobile number ka format valid hai lekin carrier ki shanakht nahi ho saki.');
-    riskPoints += 5;
+    reasons.push(`International phone number detected (${country || 'INTL'}).`);
+    reasonsUr.push(`Bain-ul-aqwami (International) phone number shanakht hua (${country || 'INTL'}).`);
   }
 
-  // Known demo/scam numbers for testing
-  const KNOWN_SCAM_NUMBERS = ['03001234567', '03119876543'];
-  if (KNOWN_SCAM_NUMBERS.includes(normalized)) {
+  // 1. Reserved North American 555-01XX test & robocall spoofing numbers (+1 800 555-0199)
+  const digits = normalized.replace(/\D/g, '');
+  const rawClean = (phoneNumber || '').replace(/\D/g, '');
+  const is555_01 = /55501\d{2}$/.test(digits) || /55501\d{2}$/.test(rawClean) || /555-?01\d{2}/.test(phoneNumber);
+
+  if (is555_01) {
+    riskPoints += 75;
+    reasons.push('Uses an official reserved 555-01XX line in North America frequently flagged for automated robocalls, bank imposter phishing, and urgent OTP scams.');
+    reasonsUr.push('Yeh reserved 555-01XX line istemal karta hai jo robocall spoofing aur bank phishing ke liye flagged hoti hai.');
+  }
+
+  // 2. Toll-free numbers (+1 800, 888, 877, 866, 855, 844, 833)
+  const isTollFree = /^1?(800|888|877|866|855|844|833)/.test(digits) || /^\+?1?(800|888|877|866|855|844|833)/.test(rawClean);
+  if (isTollFree) {
+    riskPoints += 25;
+    reasons.push('Toll-free number format detected. Frequently mimicked by automated robocalls and impersonation scams.');
+    reasonsUr.push('Toll-free number format shanakht hua. Impersonation scams aur automated calls mein istemal hota hai.');
+  }
+
+  // 3. Known demo/scam numbers for testing
+  const KNOWN_SCAM_NUMBERS = [
+    '03001234567', '03119876543',
+    '+18005550199', '18005550199', '8005550199',
+    '+18005550100', '18005550100', '8005550100'
+  ];
+  if (KNOWN_SCAM_NUMBERS.includes(normalized) || KNOWN_SCAM_NUMBERS.includes(digits) || KNOWN_SCAM_NUMBERS.includes(rawClean)) {
     riskPoints += 70;
     reasons.push('This number matches a known high-risk scam record.');
     reasonsUr.push('Yeh number mashhoor high-risk scam record se match karta hai.');
@@ -495,7 +540,7 @@ function analyzePhoneNumber(phoneNumber, communityReports = 0) {
 
   return {
     normalized_number: normalized,
-    international,
+    international: international || normalized,
     valid: true,
     carrier,
     risk_score: score,

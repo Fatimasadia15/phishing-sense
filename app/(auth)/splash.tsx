@@ -10,22 +10,35 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { useAuth }  from '../../src/store/AuthContext';
 import { USE_NATIVE_DRIVER } from '../../src/theme/responsive';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  const { theme } = useTheme();
-  const { t }     = useTranslation();
-  const insets    = useSafeAreaInsets();
-  const navigatedRef = useRef(false);
+  const { theme }           = useTheme();
+  const { t }               = useTranslation();
+  const { isAuthenticated } = useAuth();
+  const insets              = useSafeAreaInsets();
+  const navigatedRef        = useRef(false);
 
   const navigateNext = () => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
-    router.replace('/(auth)/onboarding');
+    if (isAuthenticated) {
+      router.replace('/(app)/home');
+    } else {
+      router.replace('/(auth)/onboarding');
+    }
   };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigateNext();
+      return;
+    }
+  }, [isAuthenticated]);
 
   const orbScale    = useRef(new Animated.Value(0.4)).current;
   const orbOpacity  = useRef(new Animated.Value(0)).current;

@@ -74,9 +74,7 @@ export default function SignupScreen() {
     if (!validate()) return;
     try {
       await signup(name, email, password);
-      if (isAuthenticated) {
-        router.replace('/(app)/home');
-      }
+      router.replace('/(app)/home');
     } catch {
       // Error is set in AuthContext
     }
@@ -85,9 +83,6 @@ export default function SignupScreen() {
   const handleSocialAuth = async (provider: 'google') => {
     try {
       await signInWithOAuth(provider);
-      if (isAuthenticated) {
-        router.replace('/(app)/home');
-      }
     } catch {
       // Error is set in AuthContext
     }

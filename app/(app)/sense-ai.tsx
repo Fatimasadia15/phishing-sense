@@ -86,21 +86,6 @@ export default function SenseAIScreen() {
   const suggestions = t('senseAi.suggestions', { returnObjects: true }) as string[];
   const hasMessages = chatMessages.length > 0;
 
-  // ── Existing logic (unchanged) ────────────────────────────
-  const handleSend = (textToSend?: string) => {
-    const query = (textToSend || input).trim();
-    if (!query || isChatThinking) return;
-
-    // Press animation
-    Animated.sequence([
-      Animated.timing(sendScale, { toValue: 0.88, duration: 80,  useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.timing(sendScale, { toValue: 1,    duration: 150, useNativeDriver: USE_NATIVE_DRIVER }),
-    ]).start();
-
-    sendChatMessage(query, language);
-    setInput('');
-  };
-
   // ── Voice input: transcript lands in the input field, then auto-sends ──
   const handleVoiceTextReady = useCallback((text: string) => {
     setInput(text);
@@ -118,6 +103,25 @@ export default function SenseAIScreen() {
     startListening, stopListening, speakResult, stopSpeaking, reset: resetVoice,
   } = useVoiceAssistant(language, handleVoiceTextReady);
 
+  // ── Chat Send Logic ──────────────────────────────
+  const handleSend = (textToSend?: string) => {
+    const query = (textToSend || input).trim();
+    if (!query || isChatThinking) return;
+
+    // Immediately stop any currently playing voice speech when sending a new message
+    stopSpeaking();
+    speakNextRef.current = false;
+
+    // Press animation
+    Animated.sequence([
+      Animated.timing(sendScale, { toValue: 0.88, duration: 80,  useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(sendScale, { toValue: 1,    duration: 150, useNativeDriver: USE_NATIVE_DRIVER }),
+    ]).start();
+
+    sendChatMessage(query, language);
+    setInput('');
+  };
+
   // Auto-speak the AI reply for voice-initiated questions
   useEffect(() => {
     const lastMsg = chatMessages[chatMessages.length - 1];
@@ -127,6 +131,13 @@ export default function SenseAIScreen() {
       speakResult(lastMsg.content, ttsLang);
     }
   }, [chatMessages, isChatThinking, speakResult]);
+
+  // Clean up speech when screen unmounts
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, [stopSpeaking]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

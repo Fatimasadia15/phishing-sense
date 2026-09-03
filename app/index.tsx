@@ -6,7 +6,12 @@ import { useAuth } from '../src/store/AuthContext';
 // ─────────────────────────────────────────────────────────────
 
 export default function Index() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
   return isAuthenticated
     ? <Redirect href="/(app)/home" />
     : <Redirect href="/(auth)/splash" />;

@@ -353,6 +353,11 @@ export function useVoiceAssistant(
 
   const speakResult = useCallback(async (text: string, language?: string) => {
     if (!text) return;
+
+    try {
+      await Speech.stop();
+    } catch {}
+
     setVoiceState('speaking');
 
     const lang = language

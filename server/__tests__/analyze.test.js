@@ -530,6 +530,13 @@ describe('analyzePhoneNumber — uncertainty', () => {
     assert.match(result.reason, /known high-risk scam record/);
   });
 
+  it('marks reserved 555-01XX international robocall spoofing numbers as dangerous', () => {
+    const result = analyzePhoneNumber('+1 (800) 555-0199');
+    assert.equal(result.verdict, 'DANGEROUS');
+    assert.ok(result.risk_score >= 71);
+    assert.match(result.reason, /555-01XX/);
+  });
+
   it('keeps invalid number formats unverified rather than legitimate', () => {
     const result = analyzePhoneNumber('not-a-number');
     assert.equal(result.verdict, 'SAFE');

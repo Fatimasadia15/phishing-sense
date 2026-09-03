@@ -66,7 +66,6 @@ export default function LoginScreen() {
   const handleSocialAuth = async (provider: 'google') => {
     try {
       await signInWithOAuth(provider);
-      router.replace('/(app)/home');
     } catch {
       // Error is set in AuthContext
     }
