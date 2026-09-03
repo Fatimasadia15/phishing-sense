@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { IS_WEB } from '../../src/theme/responsive';
+import { IS_WEB, USE_NATIVE_DRIVER } from '../../src/theme/responsive';
 import { shadow } from '../../src/theme/tokens';
 import { useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
@@ -38,8 +38,8 @@ function ThinkingDots({ color }: { color: string }) {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(val, { toValue: 1,   duration: 350, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0.3, duration: 350, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 1,   duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
+          Animated.timing(val, { toValue: 0.3, duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
           Animated.delay(700 - delay),
         ])
       );
@@ -93,8 +93,8 @@ export default function SenseAIScreen() {
 
     // Press animation
     Animated.sequence([
-      Animated.timing(sendScale, { toValue: 0.88, duration: 80,  useNativeDriver: true }),
-      Animated.timing(sendScale, { toValue: 1,    duration: 150, useNativeDriver: true }),
+      Animated.timing(sendScale, { toValue: 0.88, duration: 80,  useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(sendScale, { toValue: 1,    duration: 150, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
 
     sendChatMessage(query, language);
@@ -129,9 +129,10 @@ export default function SenseAIScreen() {
   }, [chatMessages, isChatThinking, speakResult]);
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 150);
+    return () => clearTimeout(timer);
   }, [chatMessages, isChatThinking]);
 
   // ── Orb state derived from chat state ─────────────────────
@@ -794,17 +795,17 @@ const styles = StyleSheet.create({
     ...Platform.select({ android: { textAlignVertical: 'center' } }),
   },
   sendBtn: {
-    width:        42,
-    height:       42,
-    borderRadius: 21,
+    width:        44,
+    height:       44,
+    borderRadius: 22,
     alignItems:   'center',
     justifyContent: 'center',
     flexShrink:   0,
   },
   micBtn: {
-    width:        IS_WEB ? 36 : 42,
-    height:       IS_WEB ? 36 : 42,
-    borderRadius: IS_WEB ? 18 : 21,
+    width:        IS_WEB ? 36 : 44,
+    height:       IS_WEB ? 36 : 44,
+    borderRadius: IS_WEB ? 18 : 22,
     alignItems:   'center',
     justifyContent: 'center',
     flexShrink:   0,

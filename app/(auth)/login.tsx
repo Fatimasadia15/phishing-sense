@@ -58,17 +58,17 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       router.replace('/(app)/home');
-    } catch (e) {
-      console.warn('Login error', e);
+    } catch {
+      // Error is set in AuthContext
     }
   };
 
-  const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+  const handleSocialAuth = async (provider: 'google') => {
     try {
       await signInWithOAuth(provider);
       router.replace('/(app)/home');
-    } catch (e) {
-      console.warn(`${provider} sign-in error`, e);
+    } catch {
+      // Error is set in AuthContext
     }
   };
 
@@ -236,7 +236,7 @@ export default function LoginScreen() {
               },
             ]}
           >
-            Always verifying links, messages & calls safely.
+            {t('auth.trustBanner')}
           </Text>
         </View>
 

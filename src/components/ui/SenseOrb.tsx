@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Colors, shadow } from '../../theme/tokens';
-import { WEB_SCALE } from '../../theme/responsive';
+import { WEB_SCALE, USE_NATIVE_DRIVER } from '../../theme/responsive';
 
 // ─────────────────────────────────────────────────────────────
 //  Sense Orb — Layered AI-Companion Centerpiece
@@ -107,19 +107,19 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
             toValue: 1.035,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(auraAnim, {
             toValue: 0.65,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(shimmerAnim, {
             toValue: 0.95,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
         Animated.parallel([
@@ -127,19 +127,19 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
             toValue: 0.975,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(auraAnim, {
             toValue: 0.35,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(shimmerAnim, {
             toValue: 0.65,
             duration: 2400,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
       ])
@@ -156,13 +156,13 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
           toValue: 1.06,
           duration: 1100,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(breathAnim, {
           toValue: 0.96,
           duration: 1100,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     ).start();
@@ -171,8 +171,8 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(anim, { toValue: 0.6, duration: 250, useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0,   duration: 950, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0.6, duration: 250, useNativeDriver: USE_NATIVE_DRIVER }),
+          Animated.timing(anim, { toValue: 0,   duration: 950, useNativeDriver: USE_NATIVE_DRIVER }),
         ])
       ).start();
     };
@@ -188,13 +188,13 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
           toValue: 1.05,
           duration: 650,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(breathAnim, {
           toValue: 0.95,
           duration: 650,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     ).start();
@@ -204,14 +204,14 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
         toValue: 1,
         duration: 2600,
         easing: Easing.linear,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       })
     ).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(auraAnim, { toValue: 0.8, duration: 400, useNativeDriver: true }),
-        Animated.timing(auraAnim, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+        Animated.timing(auraAnim, { toValue: 0.8, duration: 400, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(auraAnim, { toValue: 0.3, duration: 400, useNativeDriver: USE_NATIVE_DRIVER }),
       ])
     ).start();
   };
@@ -220,9 +220,9 @@ export function SenseOrb({ state = 'idle', size = 'md' }: SenseOrbProps) {
   const startResult = () => {
     breathAnim.stopAnimation();
     rotateAnim.stopAnimation();
-    Animated.spring(breathAnim, { toValue: 1.02, useNativeDriver: true, damping: 14 }).start();
-    Animated.timing(auraAnim, { toValue: 0.55, duration: 600, useNativeDriver: true }).start();
-    Animated.timing(shimmerAnim, { toValue: 0.9, duration: 600, useNativeDriver: true }).start();
+    Animated.spring(breathAnim, { toValue: 1.02, useNativeDriver: USE_NATIVE_DRIVER, damping: 14 }).start();
+    Animated.timing(auraAnim, { toValue: 0.55, duration: 600, useNativeDriver: USE_NATIVE_DRIVER }).start();
+    Animated.timing(shimmerAnim, { toValue: 0.9, duration: 600, useNativeDriver: USE_NATIVE_DRIVER }).start();
   };
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
+import { Platform } from 'react-native';
 import { makeRedirectUri } from 'expo-auth-session';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import type { User, Session } from '@supabase/supabase-js';
@@ -38,7 +39,7 @@ interface AuthContextValue {
   signup:          (name: string, email: string, password: string) => Promise<void>;
   logout:          () => Promise<void>;
   sendResetEmail:  (email: string) => Promise<void>;
-  signInWithOAuth: (provider: 'google' | 'facebook') => Promise<void>;
+  signInWithOAuth: (provider: 'google') => Promise<void>;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -109,6 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setSession(newSession);
         setUser(mapUser(newSession?.user ?? null));
+        if (newSession?.user) {
+          ensureProfile(newSession.user).catch(() => {});
+        }
         setLoading(false);
       }
     );
@@ -202,14 +206,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signInWithOAuth = useCallback(async (provider: 'google' | 'facebook') => {
+  const signInWithOAuth = useCallback(async (provider: 'google') => {
     setAuthError(null);
     setLoading(true);
     try {
+      if (Platform.OS === 'web') {
+        const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            queryParams: { prompt: 'select_account' },
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
       const redirectTo = makeRedirectUri({ scheme: 'phishingsense' });
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo, skipBrowserRedirect: true },
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          queryParams: { prompt: 'select_account' },
+        },
       });
       if (error) throw error;
       if (!data?.url) throw new Error('No OAuth URL returned from Supabase.');
@@ -226,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (exchangeError) throw exchangeError;
         if (exchangeData.user) {
-          await ensureProfile(exchangeData.user);
+          ensureProfile(exchangeData.user).catch(() => {});
         }
         setSession(exchangeData.session);
         setUser(mapUser(exchangeData.user));

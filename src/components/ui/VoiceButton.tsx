@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Animated, Easing, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
-import { IS_WEB } from '../../theme/responsive';
+import { IS_WEB, USE_NATIVE_DRIVER } from '../../theme/responsive';
 import { shadow } from '../../theme/tokens';
 import type { VoiceState } from '../../services/voice';
 
@@ -71,13 +71,13 @@ export function VoiceButton({
             toValue: 1.15,
             duration: 800,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 800,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ])
       );
@@ -96,12 +96,12 @@ export function VoiceButton({
             toValue: 1,
             duration: 1500,
             easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(ringAnim, {
             toValue: 0,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ])
       );
@@ -119,7 +119,7 @@ export function VoiceButton({
           toValue: 1,
           duration: 1200,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         })
       );
       spin.start();

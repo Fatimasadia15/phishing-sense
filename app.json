@@ -7,6 +7,7 @@
     "scheme": "phishingsense",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#F8F8FF",
       "resizeMode": "contain"
     },
@@ -25,7 +26,9 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiBaseUrl": "http://192.168.0.106:3000"
+      "apiBaseUrl": "http://192.168.0.106:3000",
+      "supabaseUrl": "https://ccacfjqkuiklwsjufrii.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjYWNmanFrdWlrbHdzanVmcmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwODUzNTYsImV4cCI6MjEwMzY2MTM1Nn0.Y99sqe1arazi9V6tXDSjjasI64VB_SN8J2QXBnE4rnw"
     },
     "plugins": [
       "expo-router",

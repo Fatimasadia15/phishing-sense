@@ -20,6 +20,7 @@ import {
   type FrontendScanType,
   type HistoryItem,
 } from '../services/api';
+import { useAuth } from './AuthContext';
 
 // ─────────────────────────────────────────────────────────────
 //  App Context — scan history, stats, AI chat
@@ -105,6 +106,7 @@ const OFFLINE_AI_MESSAGE =
   "I'm offline right now, but here's the most important safety rule: never share OTPs, PINs, or passwords with anyone — even if they claim to be from your bank.";
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
   const [stats, setStats]             = useState(computeStats([]));
   const [isHistoryLoading, setHistoryLoading] = useState(false);
@@ -115,6 +117,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notificationsOn, setNotificationsOn] = useState(true);
 
   const refreshHistory = useCallback(async () => {
+    if (!isAuthenticated) {
+      setScanHistory([]);
+      setStats(computeStats([]));
+      setHistoryError(null);
+      return;
+    }
+
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -133,7 +142,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const removeScan = useCallback(async (id: string): Promise<boolean> => {
     const numericId = parseInt(id, 10);
@@ -150,10 +159,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, []);
 
-  // Load persisted history on mount
+  // Load persisted history once auth state is known
   useEffect(() => {
+    if (isAuthLoading) return;
     refreshHistory();
-  }, [refreshHistory]);
+  }, [isAuthLoading, refreshHistory]);
 
   const addScan = useCallback(async (
     content: string,

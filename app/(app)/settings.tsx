@@ -346,7 +346,7 @@ export default function SettingsScreen() {
               },
             ]}
           >
-            Phishing Sense • v1.0.0 (Build 100)
+            {t('settings.about.versionFull')}
           </Text>
         </View>
       </ScrollView>

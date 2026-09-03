@@ -26,59 +26,6 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export const MOCK_USER = {
-  id:       'user-001',
-  name:     '',
-  email:    '',
-  joinDate: new Date('2024-01-15'),
-  avatar:   null as string | null,
-};
-
-export const MOCK_SCAN_HISTORY: ScanResult[] = [
-  {
-    id:         '1',
-    content:    'http://paypal-secure-login.xyz/verify',
-    type:       'url',
-    risk:       'dangerous',
-    confidence: 94,
-    timestamp:  new Date(Date.now() - 1000 * 60 * 30),
-    details:    'Domain is newly registered and mimics a well-known payment provider.',
-  },
-  {
-    id:         '2',
-    content:    'Your HBL account has been suspended. Click here to verify: bit.ly/h8l-update',
-    type:       'sms',
-    risk:       'suspicious',
-    confidence: 78,
-    timestamp:  new Date(Date.now() - 1000 * 60 * 60 * 2),
-    details:    'Message uses urgency tactics and a URL shortener, common in phishing SMS.',
-  },
-  {
-    id:         '3',
-    content:    'https://www.google.com',
-    type:       'url',
-    risk:       'safe',
-    confidence: 99,
-    timestamp:  new Date(Date.now() - 1000 * 60 * 60 * 5),
-    details:    'Domain is verified, long-established, and uses HTTPS.',
-  },
-  {
-    id:         '4',
-    content:    '+92 300 1234567 — Received suspicious call from this number',
-    type:       'phone',
-    risk:       'suspicious',
-    confidence: 65,
-    timestamp:  new Date(Date.now() - 1000 * 60 * 60 * 24),
-    details:    'Pattern matches known scam numbers. Multiple user reports found.',
-  },
-];
-
-export const MOCK_STATS = {
-  scansToday:     3,
-  totalScans:     47,
-  threatsBlocked: 12,
-};
-
 // ── Sense AI mock Q&A pairs ─────────────────────────────────
 export interface QAPair {
   pattern: RegExp;

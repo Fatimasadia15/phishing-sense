@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 
-type Provider = 'google' | 'facebook';
+type Provider = 'google';
 
 interface SocialAuthButtonsProps {
   onPress: (provider: Provider) => void;
@@ -63,35 +63,6 @@ export function SocialAuthButtons({ onPress, disabled }: SocialAuthButtonsProps)
           ]}
         >
           {t('auth.social.continueWithGoogle')}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => onPress('facebook')}
-        disabled={disabled}
-        activeOpacity={0.82}
-        accessibilityRole="button"
-        accessibilityLabel={t('auth.social.continueWithFacebook')}
-        style={[
-          styles.button,
-          {
-            backgroundColor: '#1877F2',
-            borderColor: '#1877F2',
-            marginTop: 12,
-          },
-        ]}
-      >
-        <Ionicons name="logo-facebook" size={22} color="#FFFFFF" />
-        <Text
-          style={[
-            styles.buttonText,
-            {
-              color: '#FFFFFF',
-              fontFamily: theme.fonts.bodySemibold,
-            },
-          ]}
-        >
-          {t('auth.social.continueWithFacebook')}
         </Text>
       </TouchableOpacity>
     </View>

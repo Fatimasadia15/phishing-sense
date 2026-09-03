@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import { USE_NATIVE_DRIVER } from '../../theme/responsive';
 import { useApp } from '../../store/AppContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -76,11 +77,11 @@ export function Input({
   // Shake animation on error
   const shake = useCallback(() => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 8,  duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,  duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,  duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8,  duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 6,  duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 0,  duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   }, [shakeAnim]);
 

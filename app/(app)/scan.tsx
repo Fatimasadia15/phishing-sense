@@ -13,11 +13,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { IS_WEB } from '../../src/theme/responsive';
+import { IS_WEB, USE_NATIVE_DRIVER } from '../../src/theme/responsive';
 import { shadow } from '../../src/theme/tokens';
 import { useApp } from '../../src/store/AppContext';
 import { Badge } from '../../src/components/ui/Badge';
@@ -45,11 +46,11 @@ interface ScanTypeOption {
   hint:        string;
 }
 
-const SCAN_TYPES: ScanTypeOption[] = [
-  { id: 'url',     icon: 'link-outline',       label: 'Link / URL',    placeholder: 'Paste a suspicious link here…',          hint: 'e.g. https://paypal-secure.xyz/login' },
-  { id: 'message', icon: 'chatbubble-outline',  label: 'Message / SMS', placeholder: 'Paste a suspicious message here…',       hint: '"Your account has been suspended. Click here…"' },
-  { id: 'email',   icon: 'mail-outline',        label: 'Email Text',    placeholder: 'Paste suspicious email content here…',   hint: 'Copy the full email body or sender address' },
-  { id: 'phone',   icon: 'call-outline',        label: 'Phone Number',  placeholder: 'Enter a suspicious phone number…',       hint: 'e.g. +92 300 1234567' },
+const getScanTypes = (t: TFunction): ScanTypeOption[] => [
+  { id: 'url',     icon: 'link-outline',       label: t('scan.types.url.label'),     placeholder: t('scan.types.url.placeholder'),     hint: t('scan.types.url.hint') },
+  { id: 'message', icon: 'chatbubble-outline',  label: t('scan.types.message.label'), placeholder: t('scan.types.message.placeholder'), hint: t('scan.types.message.hint') },
+  { id: 'email',   icon: 'mail-outline',        label: t('scan.types.email.label'),   placeholder: t('scan.types.email.placeholder'),   hint: t('scan.types.email.hint') },
+  { id: 'phone',   icon: 'call-outline',        label: t('scan.types.phone.label'),   placeholder: t('scan.types.phone.placeholder'),   hint: t('scan.types.phone.hint') },
 ];
 
 function scanTypeForContent(content: string): ScanType {
@@ -59,9 +60,9 @@ function scanTypeForContent(content: string): ScanType {
 }
 
 const RESULT_CONFIG = {
-  safe:      { icon: 'shield-checkmark', iconColor: '#2E7D55', bgColor: '#F0FDF4', borderColor: '#4CAF82',  headline: 'Looks Safe ✓',       advice: 'No signs of phishing or scams were found.',                                          action: 'This appears safe — but always be cautious when sharing personal information online.' },
-  suspicious:{ icon: 'warning',          iconColor: '#E07B20', bgColor: '#FFFBEB', borderColor: '#F59E0B',  headline: 'Be Careful ⚠️',       advice: 'Something about this looks a little unusual.',                                        action: 'Do not share passwords, PINs, or OTPs until you verify this is from a trusted source.' },
-  dangerous: { icon: 'close-circle',     iconColor: '#DC2626', bgColor: '#FFF5F5', borderColor: '#F87171',  headline: 'Do Not Proceed 🚫', advice: 'This looks like a phishing attempt or scam.',                                         action: 'Do not click any links, share any information, or respond. Block the sender and report it.' },
+  safe:      { icon: 'shield-checkmark', iconColor: '#2E7D55', bgColor: '#F0FDF4', borderColor: '#4CAF82' },
+  suspicious:{ icon: 'warning',          iconColor: '#E07B20', bgColor: '#FFFBEB', borderColor: '#F59E0B' },
+  dangerous: { icon: 'close-circle',     iconColor: '#DC2626', bgColor: '#FFF5F5', borderColor: '#F87171' },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -73,21 +74,22 @@ const RESULT_CONFIG = {
 //  threat indicators are shared.
 // ─────────────────────────────────────────────────────────────
 
-function buildShareMessage(result: ScanResult): string {
-  const verdict = result.risk.toUpperCase();
+function buildShareMessage(result: ScanResult, t: TFunction): string {
+  const verdictLabel = t(`scan.result.${result.risk}.label`);
   const emoji =
     result.risk === 'dangerous' ? '🚨' :
     result.risk === 'suspicious' ? '⚠️' : '🛡️';
 
+  const titleKey = result.risk === 'safe' ? 'scan.share.titleCheck' : 'scan.share.titleWarning';
   const lines: string[] = [
-    `${emoji} Phishing Sense ${result.risk === 'safe' ? 'Check' : 'Warning'}`,
+    `${emoji} ${t(titleKey)}`,
     '',
-    `Verdict: ${verdict}`,
-    `Risk Score: ${result.confidence}/100`,
+    t('scan.share.verdict', { verdict: verdictLabel }),
+    t('scan.share.riskScore', { score: result.confidence }),
   ];
 
   if (result.indicators && result.indicators.length > 0) {
-    lines.push('', 'Why:');
+    lines.push('', t('scan.share.why'));
     result.indicators.slice(0, 3).forEach(ind => lines.push(`• ${ind}`));
   } else if (result.details) {
     lines.push('', result.details);
@@ -97,49 +99,53 @@ function buildShareMessage(result: ScanResult): string {
 
   if (result.risk === 'safe') {
     if (result.isDemoFallback) {
-      lines.push('No major warning signs detected in this limited offline check.');
-      lines.push('This is not a verified safe result.');
+      lines.push(t('scan.share.safe.offlineNoMajor'));
+      lines.push(t('scan.share.safe.offlineNotVerified'));
     } else {
-      lines.push('No major scam indicators were detected.');
+      lines.push(t('scan.share.safe.noIndicators'));
       lines.push('');
-      lines.push('Always verify sensitive requests through official channels.');
+      lines.push(t('scan.share.safe.alwaysVerify'));
     }
   } else if (result.risk === 'suspicious') {
-    lines.push('Be careful before clicking links or sharing personal information.');
+    lines.push(t('scan.share.suspicious'));
   } else {
-    lines.push('Do not click any links, share any information, or respond.');
-    lines.push('Block the sender and report it.');
+    lines.push(t('scan.share.dangerous.doNot'));
+    lines.push(t('scan.share.dangerous.block'));
   }
 
   if (result.isDemoFallback && result.risk !== 'safe') {
     lines.push('');
-    lines.push('Offline limited analysis — this is not a verified safe result.');
+    lines.push(t('scan.share.offlineNotice'));
   }
 
   lines.push('');
-  lines.push('— Phishing Sense');
+  lines.push(t('scan.share.signature'));
 
   return lines.join('\n');
 }
 
-function buildPhoneShareMessage(r: CheckNumberResponse): string {
-  const verdict = r.verdict.toUpperCase();
+function buildPhoneShareMessage(r: CheckNumberResponse, t: TFunction): string {
+  const verdictLabel =
+    r.verdict === 'SAFE' ? t('scan.phoneSafe') :
+    r.verdict === 'SUSPICIOUS' ? t('scan.phoneSuspicious') :
+    t('scan.phoneDangerous');
   const emoji =
     r.verdict === 'DANGEROUS' ? '🚨' :
     r.verdict === 'SUSPICIOUS' ? '⚠️' : '🛡️';
 
+  const titleKey = r.verdict === 'SAFE' ? 'scan.share.titleCheck' : 'scan.share.titleWarning';
   const lines: string[] = [
-    `${emoji} Phishing Sense ${r.verdict === 'SAFE' ? 'Check' : 'Warning'}`,
+    `${emoji} ${t(titleKey)}`,
     '',
-    `Verdict: ${verdict}`,
-    `Risk Score: ${r.risk_score}/100`,
+    t('scan.share.verdict', { verdict: verdictLabel }),
+    t('scan.share.riskScore', { score: r.risk_score }),
   ];
 
   if (r.normalized_number) {
-    lines.push(`Number: ${r.normalized_number}`);
+    lines.push(t('scan.share.phone.number', { number: r.normalized_number }));
   }
   if (r.carrier) {
-    lines.push(`Network: ${r.carrier}`);
+    lines.push(t('scan.share.phone.network', { carrier: r.carrier }));
   }
   if (r.reason) {
     lines.push('', r.reason);
@@ -148,18 +154,16 @@ function buildPhoneShareMessage(r: CheckNumberResponse): string {
   lines.push('');
 
   if (r.verdict === 'SAFE') {
-    lines.push(r.valid
-      ? 'No community reports are known for this number. This does not prove the caller is legitimate.'
-      : 'This number format could not be verified. Treat unknown callers with caution.');
+    lines.push(t(r.valid ? 'scan.share.phone.safe.valid' : 'scan.share.phone.safe.invalid'));
   } else if (r.verdict === 'SUSPICIOUS') {
-    lines.push('Be careful with calls or messages from this number.');
+    lines.push(t('scan.share.phone.suspicious'));
   } else {
-    lines.push('Do not answer calls or respond to messages from this number.');
-    lines.push('Block the number and report it.');
+    lines.push(t('scan.share.phone.dangerous.doNot'));
+    lines.push(t('scan.share.phone.dangerous.block'));
   }
 
   lines.push('');
-  lines.push('— Phishing Sense');
+  lines.push(t('scan.share.signature'));
 
   return lines.join('\n');
 }
@@ -185,7 +189,7 @@ export default function ScanScreen() {
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const resultSlide   = useRef(new Animated.Value(20)).current;
 
-  const currentType = SCAN_TYPES.find(s => s.id === selectedType) ?? SCAN_TYPES[0];
+  const currentType = getScanTypes(t).find(s => s.id === selectedType) ?? getScanTypes(t)[0];
   const hasInput    = inputContent.trim().length > 0;
   const isScanning  = orbState === 'analyzing';
 
@@ -209,27 +213,31 @@ export default function ScanScreen() {
     setResult(null);
     resultOpacity.setValue(0);
     resultSlide.setValue(20);
-    // Brief delay for the text to render, then trigger analysis
-    await new Promise(resolve => setTimeout(resolve, 1800));
     const scanRes = await addScan(text, scanTypeForContent(text));
     setResult(scanRes);
     setOrbState('result');
     Animated.parallel([
-      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
     // Return the verdict summary — the voice hook will auto-speak it
     return buildVoiceSummary(scanRes.risk, scanRes.details, language);
-  }, [addScan, language]);
+  }, [addScan, language, resultOpacity, resultSlide]);
 
   const {
     voiceState, recognizedText, errorMessage, isAvailable,
     startListening, stopListening, speakResult, stopSpeaking, reset: resetVoice,
   } = useVoiceAssistant(language, handleVoiceTextReady);
 
-  // ── Share Intent Route Params ──────────────────────────────
-  const params = useLocalSearchParams<{ sharedText?: string; autoScan?: string; ts?: string }>();
+  // ── Route Params ──────────────────────────────
+  const params = useLocalSearchParams<{ sharedText?: string; autoScan?: string; ts?: string; type?: ScanType }>();
   const lastProcessedTsRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (params.type && ['url', 'message', 'email', 'phone'].includes(params.type)) {
+      setSelectedType(params.type);
+    }
+  }, [params.type]);
 
   const runScanWithContent = useCallback(async (content: string, type: ScanType) => {
     if (!content.trim()) return;
@@ -260,8 +268,8 @@ export default function ScanScreen() {
     }
     setOrbState('result');
     Animated.parallel([
-      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   }, [addScan, resultOpacity, resultSlide, speakResult, language]);
 
@@ -271,61 +279,24 @@ export default function ScanScreen() {
       const text = params.sharedText;
       setInputContent(text);
       const inferred = inferContentType(text);
-      const targetType: ScanType = inferred === 'url' ? 'url' : (inferred === 'phone' ? 'phone' : (inferred === 'email' ? 'email' : 'message'));
+      const targetType: ScanType = params.type || (inferred === 'url' ? 'url' : (inferred === 'phone' ? 'phone' : (inferred === 'email' ? 'email' : 'message')));
       setSelectedType(targetType);
 
       if (params.autoScan === 'true') {
         runScanWithContent(text, targetType);
       }
     }
-  }, [params.sharedText, params.autoScan, params.ts, runScanWithContent]);
+  }, [params.sharedText, params.autoScan, params.ts, params.type, runScanWithContent]);
 
   // ── Existing scan logic ────────────────────────────────────
   const handleScan = async () => {
     if (!inputContent.trim() || isScanning) return;
     Keyboard.dismiss();
     Animated.sequence([
-      Animated.timing(btnScale, { toValue: 0.95, duration: 80,  useNativeDriver: true }),
-      Animated.timing(btnScale, { toValue: 1,    duration: 150, useNativeDriver: true }),
+      Animated.timing(btnScale, { toValue: 0.95, duration: 80,  useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(btnScale, { toValue: 1,    duration: 150, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
-    setOrbState('analyzing');
-    setResult(null);
-    setPhoneResult(null);
-    setReportStatus('idle');
-    setReportCount(0);
-    resultOpacity.setValue(0);
-    resultSlide.setValue(20);
-
-    if (selectedType === 'phone') {
-      // Phone number check — dedicated flow
-      const phoneRes = await checkPhoneNumber(inputContent.trim());
-      if (phoneRes) {
-        setPhoneResult(phoneRes);
-        setReportCount(phoneRes.community_reports);
-        speakResult(buildVoiceSummary(phoneRes.verdict.toLowerCase() as 'safe' | 'suspicious' | 'dangerous', phoneRes.reason, language));
-      } else {
-        // Fallback to generic scan if backend unavailable
-        const scanRes = await addScan(inputContent, selectedType);
-        setResult(scanRes);
-        speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
-      }
-      setOrbState('result');
-      Animated.parallel([
-        Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
-      ]).start();
-    } else {
-      setTimeout(async () => {
-        const scanRes = await addScan(inputContent, selectedType);
-        setResult(scanRes);
-        setOrbState('result');
-        speakResult(buildVoiceSummary(scanRes.risk, scanRes.details, language));
-        Animated.parallel([
-          Animated.timing(resultOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-          Animated.timing(resultSlide,   { toValue: 0, duration: 350, useNativeDriver: true }),
-        ]).start();
-      }, 1800);
-    }
+    runScanWithContent(inputContent, selectedType);
   };
 
   const handleReportCommunity = async () => {
@@ -358,21 +329,21 @@ export default function ScanScreen() {
   // ── Outbound Share ─────────────────────────────────────
   const handleShareResult = useCallback(async (scanResult: ScanResult) => {
     try {
-      const message = buildShareMessage(scanResult);
-      await Share.share({ message, title: 'Phishing Sense Warning' });
+      const message = buildShareMessage(scanResult, t);
+      await Share.share({ message, title: t('scan.shareTitle') });
     } catch {
       // User cancelled or share failed — no-op
     }
-  }, []);
+  }, [t]);
 
   const handleSharePhoneResult = useCallback(async (phoneRes: CheckNumberResponse) => {
     try {
-      const message = buildPhoneShareMessage(phoneRes);
-      await Share.share({ message, title: 'Phishing Sense Warning' });
+      const message = buildPhoneShareMessage(phoneRes, t);
+      await Share.share({ message, title: t('scan.shareTitle') });
     } catch {
       // User cancelled or share failed — no-op
     }
-  }, []);
+  }, [t]);
 
   const handleTypeSelect = (type: ScanType) => {
     setSelectedType(type);
@@ -383,23 +354,23 @@ export default function ScanScreen() {
   // ── Helpers ──────────────────────────────────────────────
   const orbCaption = (() => {
     switch (orbState) {
-      case 'listening':  return 'Sense is ready…';
-      case 'analyzing':  return 'Checking for risks…';
+      case 'listening':  return t('scan.orbCaption.listening');
+      case 'analyzing':  return t('scan.orbCaption.analyzing');
       case 'result':
-        if (!result) return 'Done';
-        return result.risk === 'safe' ? 'All clear!' : result.risk === 'suspicious' ? 'Stay cautious' : 'High risk detected';
-      default:           return 'Paste something to check';
+        if (!result) return t('scan.orbCaption.done');
+        return result.risk === 'safe' ? t('scan.orbCaption.resultSafe') : result.risk === 'suspicious' ? t('scan.orbCaption.resultSuspicious') : t('scan.orbCaption.resultDangerous');
+      default:           return t('scan.orbCaption.idle');
     }
   })();
 
   const timeLabel = (ts: Date): string => {
     const diff = Date.now() - ts.getTime();
     const m = Math.floor(diff / 60000);
-    if (m < 1)  return 'Just now';
-    if (m < 60) return `${m}m ago`;
+    if (m < 1)  return t('scan.time.justNow');
+    if (m < 60) return t('scan.time.minutesAgo', { count: m });
     const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
+    if (h < 24) return t('scan.time.hoursAgo', { count: h });
+    return t('scan.time.daysAgo', { count: Math.floor(h / 24) });
   };
 
   const riskIcon = (risk: ScanResult['risk']) => {
@@ -411,15 +382,15 @@ export default function ScanScreen() {
   const recentScans = scanHistory.slice(0, 3);
   const resultCfg   = result ? RESULT_CONFIG[result.risk] : null;
   const resultHeadline = result?.isDemoFallback && result.risk === 'safe'
-    ? 'Limited Check Complete'
-    : resultCfg?.headline;
+    ? t('scan.result.safe.limitedTitle')
+    : result ? t(`scan.result.${result.risk}.title`) : undefined;
   const resultAdvice = result?.isDemoFallback && result.risk === 'safe'
-    ? 'The offline checks did not find major warning signs, but this is not a verified safe result.'
-    : resultCfg?.advice;
+    ? t('scan.result.safe.limitedAdvice')
+    : result ? t(`scan.result.${result.risk}.advice`) : undefined;
   const resultAction = result?.isDemoFallback && result.risk === 'safe'
-    ? 'Verify the sender through an official channel before clicking a link, replying, or sharing information.'
-    : resultCfg?.action;
-  const phoneSafeStatus = phoneResult?.valid ? 'No Known Reports' : 'Format Not Verified';
+    ? t('scan.result.safe.limitedAction')
+    : result ? t(`scan.result.${result.risk}.action`) : undefined;
+  const phoneSafeStatus = phoneResult?.valid ? t('scan.phoneSafe') : t('scan.formatNotVerified');
   const phoneRiskColor = phoneResult?.verdict === 'SAFE' ? '#2E7D55' : phoneResult?.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626';
 
   return (
@@ -433,10 +404,10 @@ export default function ScanScreen() {
         <View style={styles.topBar}>
           <View>
             <Text style={[styles.screenLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primary, fontSize: isLarge ? 13 : 11 }]}>
-              PHISHING SENSE
+              {t('scan.screenLabel')}
             </Text>
             <Text style={[styles.screenTitle, { fontFamily: theme.fonts.headingBold, color: theme.colors.textPrimary, fontSize: isLarge ? 26 : 22 }]}>
-              Safety Check
+              {t('scan.screenTitle')}
             </Text>
           </View>
           <View style={[styles.orbMiniWrap, { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.border }]}>
@@ -445,12 +416,12 @@ export default function ScanScreen() {
         </View>
 
         <Text style={[styles.screenSub, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>
-          Paste something suspicious and Sense will help you understand if it's safe.
+          {t('scan.screenSubtitle')}
         </Text>
 
         {/* ── Scan type chips ────────────────────────────────── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow} style={styles.typeScroll}>
-          {SCAN_TYPES.map(opt => {
+          {getScanTypes(t).map(opt => {
             const active = selectedType === opt.id;
             return (
               <TouchableOpacity
@@ -458,7 +429,7 @@ export default function ScanScreen() {
                 onPress={() => handleTypeSelect(opt.id)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel={`Scan type: ${opt.label}`}
+                accessibilityLabel={t('scan.inputFor', { type: opt.label })}
                 accessibilityState={{ selected: active }}
                 style={[
                   styles.typeChip,
@@ -510,16 +481,16 @@ export default function ScanScreen() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={[styles.pasteBtn, { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary }]}
                 accessibilityRole="button"
-                accessibilityLabel="Paste from clipboard"
+                accessibilityLabel={t('scan.pasteFromClipboard')}
               >
                 <Ionicons name="clipboard-outline" size={13} color={theme.colors.primaryDark} />
                 <Text style={[styles.pasteBtnText, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primaryDark, fontSize: isLarge ? 13 : 12 }]}>
-                  Paste
+                  {t('scan.paste')}
                 </Text>
               </TouchableOpacity>
             )}
             {hasInput && (
-              <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[styles.clearBtn, { backgroundColor: theme.colors.backgroundMuted }]} accessibilityLabel="Clear">
+              <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[styles.clearBtn, { backgroundColor: theme.colors.backgroundMuted }]}>
                 <Ionicons name="close" size={14} color={theme.colors.textTertiary} />
               </TouchableOpacity>
             )}
@@ -541,7 +512,7 @@ export default function ScanScreen() {
             numberOfLines={5}
             textAlignVertical="top"
             style={[styles.textArea, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 16 : 15 }]}
-            accessibilityLabel={`Input for ${currentType.label}`}
+            accessibilityLabel={t('scan.inputFor', { type: currentType.label })}
           />
 
           <Text style={[styles.hintText, { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 13 : 12 }]}>
@@ -562,7 +533,7 @@ export default function ScanScreen() {
             {voiceState === 'listening' && recognizedText ? (
               <View style={styles.voiceTranscriptWrap}>
                 <Text style={[styles.voiceTranscriptLabel, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
-                  Hearing…
+                  {t('scan.voice.hearing')}
                 </Text>
                 <Text
                   style={[styles.voiceTranscriptText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 14 }]}
@@ -593,7 +564,7 @@ export default function ScanScreen() {
               disabled={!hasInput || isScanning}
               activeOpacity={0.82}
               accessibilityRole="button"
-              accessibilityLabel="Check for risk"
+              accessibilityLabel={t('scan.checkForRisk')}
               accessibilityState={{ disabled: !hasInput || isScanning }}
               style={[
                 styles.scanBtn,
@@ -612,7 +583,7 @@ export default function ScanScreen() {
                 style={styles.btnIcon}
               />
               <Text style={[styles.scanBtnText, { fontFamily: theme.fonts.bodySemibold, fontSize: isLarge ? 18 : 16, color: hasInput && !isScanning ? '#FFFFFF' : theme.colors.textDisabled }]}>
-                {isScanning ? 'Checking…' : 'Check for Risk'}
+                {isScanning ? t('scan.checking') : t('scan.checkForRisk')}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -652,7 +623,7 @@ export default function ScanScreen() {
               <View style={[styles.offlineNotice, { backgroundColor: '#FFF7ED', borderColor: '#F59E0B' }]}>
                 <Ionicons name="cloud-offline-outline" size={16} color="#B45309" />
                 <Text style={[styles.offlineNoticeText, { fontFamily: theme.fonts.bodyMedium, color: '#92400E', fontSize: isLarge ? 14 : 13 }]}>
-                  Offline limited analysis — this is not a verified safe result.
+                  {t('scan.result.offlineNotice')}
                 </Text>
               </View>
             )}
@@ -660,7 +631,7 @@ export default function ScanScreen() {
             {/* Risk gauge 0-100 */}
             <View style={styles.confRow}>
               <Text style={[styles.confLabel, { fontFamily: theme.fonts.body, color: resultCfg.iconColor, fontSize: isLarge ? 13 : 12 }]}>
-                Risk Score
+                {t('scan.riskScore')}
               </Text>
               <View style={[styles.confBarBg, { backgroundColor: resultCfg.borderColor + '33' }]}>
                 <View style={[styles.confBarFill, { width: `${result.confidence}%` as any, backgroundColor: resultCfg.iconColor }]} />
@@ -673,7 +644,7 @@ export default function ScanScreen() {
             {/* Why — max 2 plain-language bullets (PRD 4.1) */}
             {result.indicators && result.indicators.length > 0 && (
               <View style={styles.resultBlock}>
-                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>What we noticed</Text>
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>{t('scan.whatWeNoticed')}</Text>
                 {result.indicators.slice(0, 2).map((ind, i) => (
                   <View key={i} style={styles.indicatorRow}>
                     <View style={[styles.indicatorDot, { backgroundColor: resultCfg.iconColor }]} />
@@ -687,7 +658,7 @@ export default function ScanScreen() {
 
             {/* What this means */}
             <View style={styles.resultBlock}>
-              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>What this means</Text>
+              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>{t('scan.whatThisMeans')}</Text>
               <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{resultAdvice}</Text>
             </View>
 
@@ -695,7 +666,7 @@ export default function ScanScreen() {
             <View style={[styles.resultAdviceBox, { backgroundColor: resultCfg.borderColor + '18', borderColor: resultCfg.borderColor + '55' }]}>
               <View style={styles.resultAdviceRow}>
                 <Ionicons name="information-circle-outline" size={16} color={resultCfg.iconColor} />
-                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: resultCfg.iconColor, fontSize: isLarge ? 14 : 12, marginLeft: 6 }]}>What should I do?</Text>
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: resultCfg.iconColor, fontSize: isLarge ? 14 : 12, marginLeft: 6 }]}>{t('scan.whatShouldIDo')}</Text>
               </View>
               <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 14, marginTop: 4 }]}>{resultAction}</Text>
             </View>
@@ -734,7 +705,7 @@ export default function ScanScreen() {
                   color: reportStatus === 'done' ? '#2E7D55' : resultCfg.iconColor,
                   fontSize: isLarge ? 15 : 14,
                 }]}>
-                  {reportStatus === 'done' ? `Reported (${reportCount}) — Thank You` : reportStatus === 'sending' ? 'Submitting…' : 'Report as Scam to Community'}
+                  {reportStatus === 'done' ? t('scan.reportedWithCount', { count: reportCount }) : reportStatus === 'sending' ? t('scan.submitting') : t('scan.reportAsScam')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -745,12 +716,12 @@ export default function ScanScreen() {
                 onPress={() => handleShareResult(result)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel="Share result"
+                accessibilityLabel={t('scan.shareResult')}
                 style={[styles.scanAgainBtn, { borderColor: resultCfg.iconColor }]}
               >
                 <Ionicons name="share-outline" size={16} color={resultCfg.iconColor} />
                 <Text style={[styles.scanAgainText, { fontFamily: theme.fonts.bodySemibold, color: resultCfg.iconColor, fontSize: isLarge ? 15 : 14 }]}>
-                  Share Result
+                  {t('scan.shareResult')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -790,7 +761,7 @@ export default function ScanScreen() {
               <View style={styles.resultHeaderText}>
                 <Badge
                   variant={phoneResult.verdict.toLowerCase() as any}
-                  label={phoneResult.verdict === 'SAFE' ? phoneSafeStatus : phoneResult.verdict === 'SUSPICIOUS' ? 'Suspicious' : 'Dangerous'}
+                  label={phoneResult.verdict === 'SAFE' ? phoneSafeStatus : phoneResult.verdict === 'SUSPICIOUS' ? t('scan.result.suspicious.label') : t('scan.result.dangerous.label')}
                 />
                 <Text style={[styles.resultHeadline, {
                   fontFamily: theme.fonts.headingBold,
@@ -798,7 +769,7 @@ export default function ScanScreen() {
                   fontSize: isLarge ? 20 : 17,
                   marginTop: 4,
                 }]}>
-                  {phoneResult.verdict === 'SAFE' ? phoneSafeStatus : phoneResult.verdict === 'SUSPICIOUS' ? 'Be Careful With This Number' : 'High Risk Number'}
+                  {phoneResult.verdict === 'SAFE' ? phoneSafeStatus : phoneResult.verdict === 'SUSPICIOUS' ? t('scan.phoneSuspicious') : t('scan.phoneDangerous')}
                 </Text>
               </View>
             </View>
@@ -806,7 +777,7 @@ export default function ScanScreen() {
             {/* Risk gauge 0-100 */}
             <View style={styles.confRow}>
               <Text style={[styles.confLabel, { fontFamily: theme.fonts.body, color: phoneRiskColor, fontSize: isLarge ? 13 : 12 }]}>
-                Risk Score
+                {t('scan.riskScore')}
               </Text>
               <View style={[styles.confBarBg, { backgroundColor: phoneRiskColor + '33' }]}>
                 <View style={[styles.confBarFill, { width: `${Math.min(100, Math.max(0, phoneResult.risk_score))}%` as any, backgroundColor: phoneRiskColor }]} />
@@ -818,19 +789,19 @@ export default function ScanScreen() {
 
             {/* Phone details */}
             <View style={styles.resultBlock}>
-              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Number</Text>
+              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>{t('scan.numberLabel')}</Text>
               <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.normalized_number || inputContent}</Text>
             </View>
 
             {phoneResult.carrier && (
               <View style={styles.resultBlock}>
-                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Network</Text>
+                <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>{t('scan.networkLabel')}</Text>
                 <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.carrier}</Text>
               </View>
             )}
 
             <View style={styles.resultBlock}>
-              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>Assessment</Text>
+              <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>{t('scan.assessmentLabel')}</Text>
               <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>{phoneResult.reason}</Text>
             </View>
 
@@ -839,15 +810,15 @@ export default function ScanScreen() {
               <View style={styles.resultAdviceRow}>
                 <Ionicons name="people-outline" size={16} color={theme.colors.textSecondary} />
                 <Text style={[styles.resultBlockLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12, marginLeft: 6 }]}>
-                  Community Reports
+                  {t('scan.communityReports')}
                 </Text>
               </View>
               <Text style={[styles.resultBlockText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14, marginTop: 4 }]}>
                 {reportCount > 0
-                  ? `${reportCount} ${reportCount === 1 ? 'person has' : 'people have'} reported this number.`
+                  ? t(reportCount === 1 ? 'scan.onePersonReported' : 'scan.manyPeopleReported', { count: reportCount })
                   : phoneResult.valid
-                    ? 'No community reports are known for this number. This does not prove the caller is legitimate.'
-                    : 'This number format could not be verified. Treat unknown callers with caution.'}
+                    ? t('scan.noReportsKnown')
+                    : t('scan.formatNotVerified')}
               </Text>
             </View>
 
@@ -871,7 +842,7 @@ export default function ScanScreen() {
                 color: reportStatus === 'done' ? '#2E7D55' : phoneResult.verdict === 'SUSPICIOUS' ? '#E07B20' : '#DC2626',
                 fontSize: isLarge ? 15 : 14,
               }]}>
-                {reportStatus === 'done' ? 'Reported — Thank You' : reportStatus === 'sending' ? 'Submitting…' : 'Report as Scam to Community'}
+                {reportStatus === 'done' ? t('scan.reportedWithCount', { count: reportCount }) : reportStatus === 'sending' ? t('scan.submitting') : t('scan.reportAsScam')}
               </Text>
             </TouchableOpacity>
 
@@ -881,12 +852,12 @@ export default function ScanScreen() {
                 onPress={() => handleSharePhoneResult(phoneResult)}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel="Share result"
+                accessibilityLabel={t('scan.shareResult')}
                 style={[styles.scanAgainBtn, { borderColor: phoneRiskColor }]}
               >
                 <Ionicons name="share-outline" size={16} color={phoneRiskColor} />
                 <Text style={[styles.scanAgainText, { fontFamily: theme.fonts.bodySemibold, color: phoneRiskColor, fontSize: isLarge ? 15 : 14 }]}>
-                  Share Result
+                  {t('scan.shareResult')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -896,11 +867,12 @@ export default function ScanScreen() {
               onPress={handleClear}
               activeOpacity={0.75}
               accessibilityRole="button"
+              accessibilityLabel={t('scan.checkAnotherNumber')}
               style={[styles.scanAgainBtn, { borderColor: theme.colors.border, marginTop: 8 }]}
             >
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSecondary} />
               <Text style={[styles.scanAgainText, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textSecondary, fontSize: isLarge ? 15 : 14 }]}>
-                Check Another Number
+                {t('scan.checkAnotherNumber')}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -908,7 +880,7 @@ export default function ScanScreen() {
 
         {/* ── Recent checks ──────────────────────────────────── */}
         <Text style={[styles.sectionTitle, { fontFamily: theme.fonts.heading, color: theme.colors.textPrimary, fontSize: isLarge ? 17 : 15 }]}>
-          Recent Checks
+          {t('scan.recentChecks')}
         </Text>
 
         {recentScans.length === 0 ? (
@@ -917,12 +889,10 @@ export default function ScanScreen() {
               <SenseOrb state="idle" size="sm" />
             </View>
             <Text style={[styles.emptyTitle, { fontFamily: theme.fonts.heading, color: theme.colors.textPrimary, fontSize: isLarge ? 16 : 15 }]}>
-              No checks yet
+              {t('scan.noChecksYet')}
             </Text>
             <Text style={[styles.emptySub, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 14 : 13 }]}>
-              Paste a suspicious message, link, or phone number above and tap{' '}
-              <Text style={{ fontFamily: theme.fonts.bodySemibold, color: theme.colors.primary }}>Check for Risk</Text>
-              {' '}whenever you're unsure.
+              {t('scan.noChecksSub')}
             </Text>
           </View>
         ) : (
@@ -945,7 +915,7 @@ export default function ScanScreen() {
                     {previewText}
                   </Text>
                   <View style={styles.historyMeta}>
-                    <Badge variant={scan.risk} label={scan.risk.charAt(0).toUpperCase() + scan.risk.slice(1)} dot={false} />
+                    <Badge variant={scan.risk} label={t(`scan.result.${scan.risk}.label`)} dot={false} />
                     <Text style={[styles.historyTime, { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
                       {timeLabel(scan.timestamp)}
                     </Text>
@@ -1035,7 +1005,7 @@ const styles = StyleSheet.create({
   detailsBox:       { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)', marginBottom: 14 },
   detailsLabel:     { marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 },
   detailsText:      { lineHeight: 20 },
-  scanAgainBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1.5, paddingVertical: IS_WEB ? 9 : 12, paddingHorizontal: IS_WEB ? 16 : 20, marginTop: 4 },
+  scanAgainBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1.5, minHeight: 44, paddingVertical: IS_WEB ? 9 : 12, paddingHorizontal: IS_WEB ? 16 : 20, marginTop: 4 },
   scanAgainText:    { letterSpacing: 0.2 },
 
   sectionTitle: { marginBottom: 12, marginTop: 4, letterSpacing: -0.2 },

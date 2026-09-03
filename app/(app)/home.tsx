@@ -61,36 +61,40 @@ export default function HomeScreen() {
 
   const quickActions = [
     {
-      key:   'url',
-      label: t('home.scanUrl'),
-      desc:  t('home.scanUrlDesc'),
-      icon:  'globe-outline',
-      color: theme.colors.primary,
-      bg:    theme.colors.primaryLight,
+      key:        'url',
+      routeType:  'url',
+      label:      t('home.scanUrl'),
+      desc:       t('home.scanUrlDesc'),
+      icon:       'globe-outline',
+      color:      theme.colors.primary,
+      bg:         theme.colors.primaryLight,
     },
     {
-      key:   'email',
-      label: t('home.scanEmail'),
-      desc:  t('home.scanEmailDesc'),
-      icon:  'mail-outline',
-      color: theme.colors.secondaryDark,
-      bg:    theme.colors.secondaryLight,
+      key:        'email',
+      routeType:  'email',
+      label:      t('home.scanEmail'),
+      desc:       t('home.scanEmailDesc'),
+      icon:       'mail-outline',
+      color:      theme.colors.secondaryDark,
+      bg:         theme.colors.secondaryLight,
     },
     {
-      key:   'sms',
-      label: t('home.scanSms'),
-      desc:  t('home.scanSmsDesc'),
-      icon:  'chatbox-ellipses-outline',
-      color: theme.colors.skyDark,
-      bg:    theme.colors.skyLight,
+      key:        'sms',
+      routeType:  'message',
+      label:      t('home.scanSms'),
+      desc:       t('home.scanSmsDesc'),
+      icon:       'chatbox-ellipses-outline',
+      color:      theme.colors.skyDark,
+      bg:         theme.colors.skyLight,
     },
     {
-      key:   'call',
-      label: t('home.scanCall'),
-      desc:  t('home.scanCallDesc'),
-      icon:  'call-outline',
-      color: theme.colors.mintDark,
-      bg:    theme.colors.mintLight,
+      key:        'call',
+      routeType:  'phone',
+      label:      t('home.scanCall'),
+      desc:       t('home.scanCallDesc'),
+      icon:       'call-outline',
+      color:      theme.colors.mintDark,
+      bg:         theme.colors.mintLight,
     },
   ];
 
@@ -255,7 +259,7 @@ export default function HomeScreen() {
                 },
               ]}
               activeOpacity={0.82}
-              onPress={() => router.push('/(app)/scan')}
+              onPress={() => router.push({ pathname: '/(app)/scan', params: { type: action.routeType } })}
               accessibilityRole="button"
               accessibilityLabel={action.label}
             >

@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { USE_NATIVE_DRIVER } from '../../src/theme/responsive';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 
 const { width, height } = Dimensions.get('window');
@@ -39,12 +40,12 @@ export default function SplashScreen() {
           toValue: 1,
           damping: 12,
           stiffness: 70,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(orbOpacity, {
           toValue: 1,
           duration: 600,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
       Animated.delay(150),
@@ -52,17 +53,17 @@ export default function SplashScreen() {
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 500,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(textY, {
           toValue: 0,
           duration: 500,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.spring(badgeScale, {
           toValue: 1,
           damping: 10,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
       Animated.delay(1400),

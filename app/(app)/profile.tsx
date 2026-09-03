@@ -45,7 +45,23 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [refreshHistory]);
 
+  const doSignOut = React.useCallback(async () => {
+    try {
+      await logout();
+    } finally {
+      router.replace('/(auth)/login');
+    }
+  }, [logout]);
+
   const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      const confirmMsg = `${t('profile.signOut')}\n\n${t('profile.signOutConfirm')}`;
+      if (typeof window !== 'undefined' ? window.confirm(confirmMsg) : true) {
+        doSignOut();
+      }
+      return;
+    }
+
     Alert.alert(
       t('profile.signOut'),
       t('profile.signOutConfirm'),
@@ -54,17 +70,14 @@ export default function ProfileScreen() {
         {
           text: t('profile.signOut'),
           style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/(auth)/login');
-          },
+          onPress: doSignOut,
         },
       ]
     );
   };
 
   const getInitials = (name?: string | null) => {
-    if (!name || !name.trim()) return 'PS';
+    if (!name || !name.trim()) return t('profile.initialsFallback');
     const parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -72,8 +85,8 @@ export default function ProfileScreen() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const displayName = user?.name?.trim() || 'Your Profile';
-  const displayEmail = user?.email?.trim() || 'Account information unavailable';
+  const displayName = user?.name?.trim() || t('profile.defaultName');
+  const displayEmail = user?.email?.trim() || t('profile.defaultEmail');
 
   const themeLabel =
     mode === 'light'
@@ -110,7 +123,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              PHISHING SENSE
+              {t('profile.screenLabel')}
             </Text>
             <Text
               style={[
@@ -198,7 +211,7 @@ export default function ProfileScreen() {
 
               {user?.name && (
                 <View style={styles.statusPillRow}>
-                  <Badge variant="primary" label="Active" dot />
+                  <Badge variant="primary" label={t('profile.activeLabel')} dot />
                 </View>
               )}
             </View>
@@ -228,7 +241,7 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                Your safety companion, whenever you need it.
+                {t('profile.guardianText')}
               </Text>
             </View>
           </View>
@@ -246,7 +259,7 @@ export default function ProfileScreen() {
               },
             ]}
           >
-            Quick Tools
+            {t('profile.quickTools')}
           </Text>
         </View>
 
@@ -264,7 +277,7 @@ export default function ProfileScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Check Link"
+            accessibilityLabel={t('profile.tools.checkLink')}
           >
             <View style={[styles.toolIconWrap, { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons name="link-outline" size={20} color={theme.colors.primaryDark} />
@@ -279,7 +292,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              Check Link
+              {t('profile.tools.checkLink')}
             </Text>
             <Text
               style={[
@@ -291,7 +304,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              Verify URLs
+              {t('profile.tools.checkLinkSub')}
             </Text>
           </TouchableOpacity>
 
@@ -308,7 +321,7 @@ export default function ProfileScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Ask Sense"
+            accessibilityLabel={t('profile.tools.askSense')}
           >
             <View style={[styles.toolIconWrap, { backgroundColor: theme.colors.skyLight }]}>
               <Ionicons name="sparkles-outline" size={20} color={theme.colors.skyDark} />
@@ -323,7 +336,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              Ask Sense
+              {t('profile.tools.askSense')}
             </Text>
             <Text
               style={[
@@ -335,7 +348,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              AI Assistant
+              {t('profile.tools.askSenseSub')}
             </Text>
           </TouchableOpacity>
 
@@ -352,7 +365,7 @@ export default function ProfileScreen() {
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Panic Mode"
+            accessibilityLabel={t('profile.tools.panicMode')}
           >
             <View style={[styles.toolIconWrap, { backgroundColor: theme.colors.danger }]}>
               <Ionicons name="alert-circle-outline" size={20} color={theme.colors.dangerDark} />
@@ -367,7 +380,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              Panic Mode
+              {t('profile.tools.panicMode')}
             </Text>
             <Text
               style={[
@@ -379,7 +392,7 @@ export default function ProfileScreen() {
                 },
               ]}
             >
-              Quick Help
+              {t('profile.tools.panicModeSub')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -396,7 +409,7 @@ export default function ProfileScreen() {
               },
             ]}
           >
-            Preferences
+            {t('profile.preferences')}
           </Text>
         </View>
 
@@ -443,7 +456,7 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                Theme ({themeLabel}) · Text Size ({textSize})
+                {t('profile.themeSizeSub', { theme: themeLabel, textSize })}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
@@ -483,7 +496,7 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                {language === 'ur' ? 'اردو (Urdu)' : 'English'}
+                {t(`languages.${language}`)}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
@@ -502,7 +515,7 @@ export default function ProfileScreen() {
               },
             ]}
           >
-            Support & Info
+            {t('profile.supportInfo')}
           </Text>
         </View>
 
@@ -521,7 +534,7 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
             style={[styles.settingsRow, { borderBottomColor: theme.colors.border }]}
             accessibilityRole="button"
-            accessibilityLabel="Ask Sense AI"
+            accessibilityLabel={t('profile.menu.help')}
           >
             <View style={[styles.rowIconWrap, { backgroundColor: theme.colors.skyLight }]}>
               <Ionicons name="sparkles-outline" size={20} color={theme.colors.skyDark} />
@@ -549,7 +562,7 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                Ask questions about online safety
+                {t('profile.helpSub')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
@@ -560,7 +573,7 @@ export default function ProfileScreen() {
             onPress={() => {
               Alert.alert(
                 t('profile.menu.privacy'),
-                'Phishing Sense helps you identify suspicious links, messages, and calls. Please review safety guidelines and always verify sources independently.'
+                t('profile.privacyAlert')
               );
             }}
             activeOpacity={0.7}
@@ -594,7 +607,7 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                Safety guidelines and privacy info
+                {t('profile.privacySub')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
@@ -645,7 +658,7 @@ export default function ProfileScreen() {
               },
             ]}
           >
-            v1.0.0 · AI-Assisted Companion
+            {t('profile.version')}
           </Text>
         </View>
       </ScrollView>

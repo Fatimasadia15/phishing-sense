@@ -97,7 +97,8 @@
       "or": "or",
       "continueWithGoogle": "Continue with Google",
       "continueWithFacebook": "Continue with Facebook"
-    }
+    },
+    "trustBanner": "Always verifying links, messages & calls safely."
   },
   "home": {
     "greeting": "Hello, {{name}} 👋",
@@ -257,6 +258,46 @@
       "errorNoSpeech": "No speech detected. Try speaking closer or type the text.",
       "errorGeneric": "Voice input is not available. You can type or paste instead.",
       "orSpeak": "or speak it"
+    },
+    "tips": {
+      "title": "Safety Tips",
+      "tip1": "Never share OTPs, PINs, or passwords over calls or SMS.",
+      "tip2": "Check the sender's email or number before clicking links.",
+      "tip3": "When in doubt, verify through an official channel."
+    },
+    "shareTitle": "Phishing Sense Warning",
+    "share": {
+      "titleCheck": "Phishing Sense Check",
+      "titleWarning": "Phishing Sense Warning",
+      "verdict": "Verdict: {{verdict}}",
+      "riskScore": "Risk Score: {{score}}/100",
+      "why": "Why:",
+      "safe": {
+        "offlineNoMajor": "No major warning signs detected in this limited offline check.",
+        "offlineNotVerified": "This is not a verified safe result.",
+        "noIndicators": "No major scam indicators were detected.",
+        "alwaysVerify": "Always verify sensitive requests through official channels."
+      },
+      "suspicious": "Be careful before clicking links or sharing personal information.",
+      "dangerous": {
+        "doNot": "Do not click any links, share any information, or respond.",
+        "block": "Block the sender and report it."
+      },
+      "offlineNotice": "Offline limited analysis — this is not a verified safe result.",
+      "signature": "— Phishing Sense",
+      "phone": {
+        "number": "Number: {{number}}",
+        "network": "Network: {{carrier}}",
+        "safe": {
+          "valid": "No community reports are known for this number. This does not prove the caller is legitimate.",
+          "invalid": "This number format could not be verified. Treat unknown callers with caution."
+        },
+        "suspicious": "Be careful with calls or messages from this number.",
+        "dangerous": {
+          "doNot": "Do not answer calls or respond to messages from this number.",
+          "block": "Block the number and report it."
+        }
+      }
     }
   },
   "senseAi": {
@@ -329,6 +370,7 @@
   },
   "profile": {
     "title": "Profile",
+    "screenLabel": "USER PROFILE",
     "initialsFallback": "PS",
     "defaultName": "Your Profile",
     "defaultEmail": "Account information unavailable",
@@ -390,8 +432,15 @@
     },
     "about": {
       "version": "Version",
-      "build": "Build"
+      "build": "Build",
+      "versionFull": "Phishing Sense • v1.0.0 (Build 100)"
     }
+  },
+  "tabs": {
+    "home": "Home",
+    "scan": "Scan",
+    "senseAi": "Sense AI",
+    "profile": "Profile"
   },
   "languages": {
     "en": "English",

@@ -50,8 +50,8 @@ export default function ForgotPasswordScreen() {
     try {
       await sendResetEmail(email);
       setSubmitted(true);
-    } catch (e) {
-      console.warn('Reset error', e);
+    } catch {
+      // Error is set in AuthContext
     }
   };
 

@@ -10,6 +10,12 @@ import { Platform, useWindowDimensions } from 'react-native';
 export const IS_WEB = Platform.OS === 'web';
 
 /**
+ * react-native-web has no native animated module, so requesting the
+ * native driver there warns and silently falls back to JS animation.
+ */
+export const USE_NATIVE_DRIVER = !IS_WEB;
+
+/**
  * Scale factor: 1 on native, ~0.82 on web.
  * Multiply heights, paddings, fontSizes by this on web to keep
  * the mobile-tuned design proportional in a wider desktop viewport.

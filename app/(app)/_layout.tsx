@@ -46,8 +46,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
-          tabBarLabel: 'Home',
+          title: t('tabs.home'),
+          tabBarLabel: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
@@ -62,8 +62,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: t('scan.title'),
-          tabBarLabel: 'Scan',
+          title: t('tabs.scan'),
+          tabBarLabel: t('tabs.scan'),
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
@@ -78,8 +78,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="sense-ai"
         options={{
-          title: t('senseAi.title'),
-          tabBarLabel: 'Sense AI',
+          title: t('tabs.senseAi'),
+          tabBarLabel: t('tabs.senseAi'),
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons
@@ -94,8 +94,8 @@ export default function AppLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: t('profile.title'),
-          tabBarLabel: 'Profile',
+          title: t('tabs.profile'),
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrap, focused && { backgroundColor: theme.colors.primaryLight }]}>
               <Ionicons

@@ -77,19 +77,19 @@ export default function SignupScreen() {
       if (isAuthenticated) {
         router.replace('/(app)/home');
       }
-    } catch (e) {
-      console.warn('Signup error', e);
+    } catch {
+      // Error is set in AuthContext
     }
   };
 
-  const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+  const handleSocialAuth = async (provider: 'google') => {
     try {
       await signInWithOAuth(provider);
       if (isAuthenticated) {
         router.replace('/(app)/home');
       }
-    } catch (e) {
-      console.warn(`${provider} sign-up error`, e);
+    } catch {
+      // Error is set in AuthContext
     }
   };
 
