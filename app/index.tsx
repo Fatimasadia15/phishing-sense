@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { useAuth } from '../src/store/AppContext';
+import { useAuth } from '../src/store/AuthContext';
 
 // ─────────────────────────────────────────────────────────────
 //  Root index — redirect based on auth state

@@ -56,6 +56,7 @@ export const darkTheme: Theme = {
     suspiciousText: '#FFB84D',
     suspiciousDark: '#E07B20',
     danger:         '#2E0A0A',
+    dangerLight:    '#3E1212',
     dangerText:     '#FF7070',
     dangerDark:     '#DC2626',
 

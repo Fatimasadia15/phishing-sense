@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { useAuth } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Card } from '../../src/components/ui/Card';
@@ -26,14 +26,19 @@ const { width } = Dimensions.get('window');
 export default function ForgotPasswordScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { sendResetEmail, isLoading } = useAuth();
+  const { sendResetEmail, isLoading, authError, clearAuthError } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [submitted, setSubmitted] = useState(false);
 
+  React.useEffect(() => {
+    clearAuthError();
+  }, []);
+
   const handleSubmit = async () => {
+    clearAuthError();
     if (!email.trim()) {
       setError(t('auth.validation.required'));
       return;
@@ -140,12 +145,32 @@ export default function ForgotPasswordScreen() {
                 onChangeText={(text) => {
                   setEmail(text);
                   if (error) setError(undefined);
+                  if (authError) clearAuthError();
                 }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 error={error}
                 style={{ marginBottom: 20 }}
               />
+
+              {authError ? (
+                <View
+                  style={[
+                    styles.errorBanner,
+                    { backgroundColor: theme.colors.danger },
+                  ]}
+                >
+                  <Ionicons name="alert-circle" size={16} color={theme.colors.dangerDark} />
+                  <Text
+                    style={[
+                      styles.errorBannerText,
+                      { color: theme.colors.dangerDark, fontFamily: theme.fonts.bodyMedium },
+                    ]}
+                  >
+                    {authError}
+                  </Text>
+                </View>
+              ) : null}
 
               <Button
                 label={t('auth.forgotPassword.sendLink')}
@@ -218,6 +243,21 @@ const styles = StyleSheet.create({
   },
   backLinkText: {
     fontSize: 14,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 18,
+    marginTop: -6,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   successBox: {
     alignItems: 'center',

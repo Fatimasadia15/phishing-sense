@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,17 @@ import { useApp } from '../../src/store/AppContext';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
 
+// Configurable emergency helpline directory for Pakistan.
+// Numbers can be overridden at build time via app.json extra values if needed.
+const HELPLINES = [
+  { key: 'police',     number: '15' },
+  { key: 'ambulance',  number: '115' },
+  { key: 'fire',       number: '16' },
+  { key: 'cybercrime', number: '1991' },
+];
+
+const PRIMARY_HELPLINE = HELPLINES[0];
+
 export default function PanicScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -23,11 +35,26 @@ export default function PanicScreen() {
   const insets = useSafeAreaInsets();
   const isLarge = textSize === 'large';
 
-  const handleCallHelp = () => {
-    // In a real app or device, links to emergency line or bank directory
-    Linking.openURL('tel:15').catch(() => {
-      // Graceful fallback for simulator / non-telephony devices
-    });
+  const handleCallHelp = async () => {
+    const telUrl = `tel:${PRIMARY_HELPLINE.number}`;
+    const canDial = await Linking.canOpenURL(telUrl).catch(() => false);
+
+    if (canDial) {
+      Linking.openURL(telUrl).catch(() => {
+        Alert.alert(
+          t('panic.dialFallbackTitle'),
+          t('panic.dialFallbackMessage', { number: PRIMARY_HELPLINE.number })
+        );
+      });
+    } else {
+      const numbersList = HELPLINES
+        .map(h => `• ${t(`panic.helplines.${h.key}`)}: ${h.number}`)
+        .join('\n');
+      Alert.alert(
+        t('panic.dialFallbackTitle'),
+        `${t('panic.dialFallbackMessage', { number: PRIMARY_HELPLINE.number })}\n\n${t('panic.dialFallbackNumbers')}\n${numbersList}`
+      );
+    }
   };
 
   const steps = [
@@ -195,6 +222,71 @@ export default function PanicScreen() {
           </View>
         </Card>
 
+        {/* Emergency Helpline Directory */}
+        <Card
+          variant="default"
+          padding={16}
+          style={styles.helplineCard}
+        >
+          <Text
+            style={[
+              styles.helplineTitle,
+              {
+                fontFamily: theme.fonts.headingBold,
+                color: theme.colors.textPrimary,
+                fontSize: isLarge ? 16 : 14,
+              },
+            ]}
+          >
+            {t('panic.dialFallbackNumbers')}
+          </Text>
+          {HELPLINES.map((h) => (
+            <TouchableOpacity
+              key={h.key}
+              onPress={() => Linking.openURL(`tel:${h.number}`).catch(() => {
+                Alert.alert(
+                  t('panic.dialFallbackTitle'),
+                  t('panic.dialFallbackMessage', { number: h.number })
+                );
+              })}
+              activeOpacity={0.7}
+              style={styles.helplineRow}
+              accessibilityRole="button"
+              accessibilityLabel={`${t(`panic.helplines.${h.key}`)} ${h.number}`}
+            >
+              <View style={[styles.helplineIconWrap, { backgroundColor: theme.colors.dangerLight }]}>
+                <Ionicons name="call-outline" size={16} color={theme.colors.dangerDark} />
+              </View>
+              <View style={styles.helplineInfo}>
+                <Text
+                  style={[
+                    styles.helplineName,
+                    {
+                      fontFamily: theme.fonts.bodySemibold,
+                      color: theme.colors.textPrimary,
+                      fontSize: isLarge ? 15 : 13,
+                    },
+                  ]}
+                >
+                  {t(`panic.helplines.${h.key}`)}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.helplineNumber,
+                  {
+                    fontFamily: theme.fonts.headingBold,
+                    color: theme.colors.dangerDark,
+                    fontSize: isLarge ? 16 : 14,
+                  },
+                ]}
+              >
+                {h.number}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </Card>
+
         {/* Action Buttons */}
         <View style={styles.actions}>
           <Button
@@ -282,6 +374,34 @@ const styles = StyleSheet.create({
   reminderText: {
     flex: 1,
     lineHeight: 19,
+  },
+  helplineCard: {
+    marginBottom: 20,
+  },
+  helplineTitle: {
+    marginBottom: 12,
+  },
+  helplineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  helplineIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helplineInfo: {
+    flex: 1,
+  },
+  helplineName: {},
+  helplineNumber: {
+    letterSpacing: 0.5,
   },
   actions: {
     marginTop: 4,

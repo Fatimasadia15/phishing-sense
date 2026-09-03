@@ -92,6 +92,11 @@
       "passwordMismatch": "Passwords do not match",
       "nameRequired": "Please enter your full name",
       "termsRequired": "Please accept the terms to continue"
+    },
+    "social": {
+      "or": "or",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithFacebook": "Continue with Facebook"
     }
   },
   "home": {
@@ -99,57 +104,145 @@
     "greetingMorning": "Good Morning, {{name}} ☀️",
     "greetingAfternoon": "Good Afternoon, {{name}} 🌤",
     "greetingEvening": "Good Evening, {{name}} 🌙",
+    "friendFallback": "Friend",
     "protectionStatus": {
       "protected": "You're Protected",
       "protectedSub": "No threats detected today",
+      "caution": "Stay Cautious",
+      "cautionSub": "A recent scan needs attention",
       "atRisk": "Stay Alert",
       "atRiskSub": "Review your recent scans"
     },
     "quickActions": "Quick Actions",
     "scanUrl": "Scan URL",
+    "scanUrlDesc": "Check fake links & websites",
     "scanEmail": "Scan Email",
+    "scanEmailDesc": "Verify sender & content",
     "scanSms": "Scan SMS",
+    "scanSmsDesc": "Detect phishing texts & OTPs",
     "scanCall": "Scan Call",
+    "scanCallDesc": "Lookup unknown phone numbers",
+    "orbReady": "Sense is ready to help check your links, messages, and calls.",
+    "scanNow": "Scan Something Now",
+    "settingsAccessibility": "Settings",
     "recentScans": "Recent Scans",
     "noRecentScans": "No scans yet. Scan something to get started!",
+    "loadingScans": "Loading your scans...",
+    "historyError": "Could not load history. Pull down to retry.",
     "seeAll": "See All",
     "panicMode": "Panic Mode",
-    "panicModeSub": "Being scammed right now?"
+    "panicModeSub": "Being scammed right now?",
+    "panicAccessibility": "Panic Mode — Being scammed right now?",
+    "securityTipTitle": "Quick Security Tip",
+    "securityTipBody": "Never share OTPs, PINs, or bank passwords over phone calls or SMS."
   },
   "scan": {
     "title": "Scan Content",
     "subtitle": "Paste a URL, email, message or phone number",
+    "screenLabel": "PHISHING SENSE",
+    "screenTitle": "Safety Check",
+    "screenSubtitle": "Paste something suspicious and Sense will help you understand if it's safe.",
     "inputLabel": "Content to Scan",
     "inputPlaceholder": "Paste URL, email text, SMS or phone number here...",
     "scanButton": "Scan Now",
     "clearButton": "Clear",
     "scanning": "Analyzing...",
-    "tips": {
-      "title": "Safety Tips",
-      "tip1": "Never share OTPs, PINs or passwords over the phone",
-      "tip2": "Banks never ask for your full account details via SMS",
-      "tip3": "Check URLs carefully before clicking — look for misspellings",
-      "tip4": "If in doubt, call the official number directly"
+    "checking": "Checking…",
+    "checkForRisk": "Check for Risk",
+    "paste": "Paste",
+    "pasteFromClipboard": "Paste from clipboard",
+    "clearInput": "Clear",
+    "inputFor": "Input for {{type}}",
+    "riskScore": "Risk Score",
+    "whatWeNoticed": "What we noticed",
+    "whatThisMeans": "What this means",
+    "whatShouldIDo": "What should I do?",
+    "reportAsScam": "Report as Scam to Community",
+    "reportedThankYou": "Reported — Thank You",
+    "reportedWithCount": "Reported ({{count}}) — Thank You",
+    "submitting": "Submitting…",
+    "shareResult": "Share Result",
+    "checkAnotherNumber": "Check Another Number",
+    "recentChecks": "Recent Checks",
+    "noChecksYet": "No checks yet",
+    "noChecksSub": "Paste a suspicious message, link, or phone number above and tap Check for Risk whenever you're unsure.",
+    "numberLabel": "Number",
+    "networkLabel": "Network",
+    "assessmentLabel": "Assessment",
+    "communityReports": "Community Reports",
+    "onePersonReported": "{{count}} person has reported this number.",
+    "manyPeopleReported": "{{count}} people have reported this number.",
+    "noReportsKnown": "No community reports are known for this number. This does not prove the caller is legitimate.",
+    "formatNotVerified": "This number format could not be verified. Treat unknown callers with caution.",
+    "phoneSafe": "No Known Reports",
+    "phoneSuspicious": "Be Careful With This Number",
+    "phoneDangerous": "High Risk Number",
+    "types": {
+      "url": {
+        "label": "Link / URL",
+        "placeholder": "Paste a suspicious link here…",
+        "hint": "e.g. https://paypal-secure.xyz/login"
+      },
+      "message": {
+        "label": "Message / SMS",
+        "placeholder": "Paste a suspicious message here…",
+        "hint": "\"Your account has been suspended. Click here…\""
+      },
+      "email": {
+        "label": "Email Text",
+        "placeholder": "Paste suspicious email content here…",
+        "hint": "Copy the full email body or sender address"
+      },
+      "phone": {
+        "label": "Phone Number",
+        "placeholder": "Enter a suspicious phone number…",
+        "hint": "e.g. +92 300 1234567"
+      }
     },
     "result": {
       "safe": {
         "label": "Safe",
-        "title": "Looks Safe! ✓",
-        "message": "This content does not show signs of phishing or scams."
+        "title": "Looks Safe ✓",
+        "message": "This content does not show signs of phishing or scams.",
+        "advice": "No signs of phishing or scams were found.",
+        "action": "This appears safe — but always be cautious when sharing personal information online.",
+        "limitedTitle": "Limited Check Complete",
+        "limitedAdvice": "The offline checks did not find major warning signs, but this is not a verified safe result.",
+        "limitedAction": "Verify the sender through an official channel before clicking a link, replying, or sharing information."
       },
       "suspicious": {
         "label": "Suspicious",
         "title": "Be Careful ⚠️",
-        "message": "This content has some suspicious characteristics. Proceed with caution."
+        "message": "This content has some suspicious characteristics. Proceed with caution.",
+        "advice": "Something about this looks a little unusual.",
+        "action": "Do not share passwords, PINs, or OTPs until you verify this is from a trusted source."
       },
       "dangerous": {
         "label": "Dangerous",
         "title": "Danger! 🚨",
-        "message": "This content is likely a phishing attempt or scam. Do not interact with it."
+        "message": "This content is likely a phishing attempt or scam. Do not interact with it.",
+        "advice": "This looks like a phishing attempt or scam.",
+        "action": "Do not click any links, share any information, or respond. Block the sender and report it."
       },
       "confidence": "Confidence: {{value}}%",
       "scanAgain": "Scan Something Else",
-      "details": "Why this result?"
+      "details": "Why this result?",
+      "offlineNotice": "Offline limited analysis — this is not a verified safe result."
+    },
+    "orbCaption": {
+      "listening": "Sense is ready…",
+      "analyzing": "Checking for risks…",
+      "resultSafe": "All clear!",
+      "resultSuspicious": "Stay cautious",
+      "resultDangerous": "High risk detected",
+      "done": "Done",
+      "idle": "Paste something to check"
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
     },
     "voice": {
       "tapToSpeak": "Tap to speak",
@@ -169,6 +262,8 @@
   "senseAi": {
     "title": "Sense AI",
     "subtitle": "Ask me anything about online safety",
+    "headerSubtitle": "Your safety companion",
+    "headerThinking": "Sense is thinking…",
     "placeholder": "Ask about a link, message, or scam...",
     "send": "Send",
     "thinking": "Thinking...",
@@ -180,7 +275,21 @@
       "Is this SMS from my bank real?",
       "How do scammers get my number?"
     ],
-    "greeting": "Hi! I'm Sense AI 👋 I'm here to help you stay safe online. What would you like to know?"
+    "greeting": "Hi! I'm Sense AI 👋 I'm here to help you stay safe online. What would you like to know?",
+    "welcomeTitle": "Hi, I'm Sense 👋",
+    "welcomeSubtitle": "Not sure about a message, link, call, or online request?\nAsk me — I'll help you understand.",
+    "trust": {
+      "private": "Private",
+      "safe": "Safe",
+      "friendly": "Friendly"
+    },
+    "aiLabel": "SENSE",
+    "hearing": "Hearing…",
+    "clearConversation": "Clear conversation",
+    "askByVoice": "Ask by voice",
+    "stopVoiceInput": "Stop voice input",
+    "stopSpeaking": "Stop speaking",
+    "privacyNote": "🔒 Type or 🎙️ speak your question — English, Urdu, or Roman Urdu"
   },
   "panic": {
     "title": "You're Safe. Take a Breath.",
@@ -207,10 +316,40 @@
     },
     "callForHelp": "Call for Help",
     "imSafeNow": "I'm Safe Now",
-    "reminder": "You are not alone. Scammers are sophisticated — it's not your fault."
+    "reminder": "You are not alone. Scammers are sophisticated — it's not your fault.",
+    "dialFallbackTitle": "Call not available",
+    "dialFallbackMessage": "Your device cannot dial numbers directly. In an emergency, call {{number}} from your phone app.",
+    "dialFallbackNumbers": "Emergency numbers you can call:",
+    "helplines": {
+      "police": "Police",
+      "ambulance": "Ambulance",
+      "fire": "Fire Brigade",
+      "cybercrime": "Cyber Crime (FIA)"
+    }
   },
   "profile": {
     "title": "Profile",
+    "initialsFallback": "PS",
+    "defaultName": "Your Profile",
+    "defaultEmail": "Account information unavailable",
+    "activeLabel": "Active",
+    "guardianText": "Your safety companion, whenever you need it.",
+    "quickTools": "Quick Tools",
+    "tools": {
+      "checkLink": "Check Link",
+      "checkLinkSub": "Verify URLs",
+      "askSense": "Ask Sense",
+      "askSenseSub": "AI Assistant",
+      "panicMode": "Panic Mode",
+      "panicModeSub": "Quick Help"
+    },
+    "preferences": "Preferences",
+    "themeSizeSub": "Theme ({{theme}}) · Text Size ({{textSize}})",
+    "supportInfo": "Support & Info",
+    "helpSub": "Ask questions about online safety",
+    "privacyAlert": "Phishing Sense helps you identify suspicious links, messages, and calls. Please review safety guidelines and always verify sources independently.",
+    "privacySub": "Safety guidelines and privacy info",
+    "version": "v1.0.0 · AI-Assisted Companion",
     "stats": {
       "scansToday": "Scans Today",
       "totalScans": "Total Scans",

@@ -27,4 +27,16 @@ function getClient() {
   return supabase;
 }
 
-module.exports = { supabase, isAvailable, getClient };
+async function ping() {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('community_reports')
+      .select('id', { count: 'exact', head: true });
+    return !error;
+  } catch (err) {
+    return false;
+  }
+}
+
+module.exports = { supabase, isAvailable, getClient, ping };

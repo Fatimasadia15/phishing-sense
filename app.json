@@ -25,7 +25,7 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiBaseUrl": "http://192.168.0.106:3001"
+      "apiBaseUrl": "http://192.168.0.106:3000"
     },
     "plugins": [
       "expo-router",

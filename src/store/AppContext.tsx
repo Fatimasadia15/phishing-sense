@@ -3,89 +3,23 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
 } from 'react';
 import {
-  MOCK_USER,
-  MOCK_SCAN_HISTORY,
-  MOCK_STATS,
   type ScanResult,
   type ChatMessage,
   mockScanContent,
-  AI_QA_PAIRS,
-  AI_DEFAULT_RESPONSE,
-  AI_DEFAULT_RESPONSE_UR,
 } from '../constants/mockData';
-import { analyzeContent, toScanResult, sendChatMessageApi, type ApiInputType, type FrontendScanType } from '../services/api';
-
-// ─────────────────────────────────────────────────────────────
-//  Auth Context — mock authentication state
-// ─────────────────────────────────────────────────────────────
-
-interface AuthUser {
-  id:     string;
-  name:   string;
-  email:  string;
-}
-
-interface AuthContextValue {
-  user:            AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading:       boolean;
-  login:           (email: string, password: string) => Promise<void>;
-  signup:          (name: string, email: string, password: string) => Promise<void>;
-  logout:          () => void;
-  sendResetEmail:  (email: string) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]         = useState<AuthUser | null>(null);
-  const [isLoading, setLoading] = useState(false);
-
-  const login = useCallback(async (email: string, _password: string) => {
-    setLoading(true);
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 1200));
-    const trimmedEmail = email.trim();
-    const extractedName = trimmedEmail ? trimmedEmail.split('@')[0].replace(/[._-]/g, ' ') : '';
-    const formattedName = extractedName ? extractedName.charAt(0).toUpperCase() + extractedName.slice(1) : '';
-    setUser({ id: 'user-001', name: formattedName, email: trimmedEmail });
-    setLoading(false);
-  }, []);
-
-  const signup = useCallback(async (name: string, email: string, _password: string) => {
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1400));
-    setUser({ id: MOCK_USER.id, name, email });
-    setLoading(false);
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-  }, []);
-
-  const sendResetEmail = useCallback(async (_email: string) => {
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    // In a real app, this would call an API
-  }, []);
-
-  return (
-    <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout, sendResetEmail }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
-}
+import {
+  analyzeContent,
+  toScanResult,
+  sendChatMessageApi,
+  getScanHistory,
+  deleteScanHistory,
+  type ApiInputType,
+  type FrontendScanType,
+  type HistoryItem,
+} from '../services/api';
 
 // ─────────────────────────────────────────────────────────────
 //  App Context — scan history, stats, AI chat
@@ -96,6 +30,10 @@ export type TextSizePreference = 'normal' | 'large';
 interface AppContextValue {
   scanHistory:       ScanResult[];
   stats:             { scansToday: number; totalScans: number; threatsBlocked: number };
+  isHistoryLoading:  boolean;
+  historyError:      string | null;
+  refreshHistory:    () => Promise<void>;
+  removeScan:        (id: string) => Promise<boolean>;
   addScan:           (content: string, scanType?: FrontendScanType) => Promise<ScanResult>;
   chatMessages:      ChatMessage[];
   sendChatMessage:   (text: string, language?: string) => void;
@@ -112,6 +50,44 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 let _idCounter = 100;
 const genId = () => String(++_idCounter);
 
+function historyItemToScanResult(item: HistoryItem): ScanResult {
+  const typeMap: Record<HistoryItem['input_type'], ScanResult['type']> = {
+    link: 'url',
+    text: 'sms',
+    message: 'sms',
+    phone: 'phone',
+  };
+
+  const verdictMap: Record<HistoryItem['verdict'], ScanResult['risk']> = {
+    SAFE: 'safe',
+    SUSPICIOUS: 'suspicious',
+    DANGEROUS: 'dangerous',
+  };
+
+  return {
+    id: String(item.id),
+    content: item.details?.content_preview || `[${item.input_type}]`,
+    type: typeMap[item.input_type] ?? 'sms',
+    risk: verdictMap[item.verdict] ?? 'suspicious',
+    confidence: item.risk_score,
+    timestamp: new Date(item.created_at),
+    details: item.details?.explanation_en,
+    indicators: item.details?.threat_indicators,
+    explanationUr: item.details?.explanation_roman_urdu,
+  };
+}
+
+function computeStats(history: ScanResult[]) {
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  return {
+    scansToday: history.filter(h => h.timestamp >= startOfToday).length,
+    totalScans: history.length,
+    threatsBlocked: history.filter(h => h.risk === 'dangerous').length,
+  };
+}
+
 function toApiInputType(scanType: FrontendScanType): ApiInputType {
   if (scanType === 'url') return 'link';
   if (scanType === 'message' || scanType === 'email') return 'message';
@@ -125,25 +101,59 @@ function toResultType(scanType: FrontendScanType): ScanResult['type'] {
   return 'sms';
 }
 
-function getMockAiResponse(text: string, language: string): string {
-  // Urdu-script input always gets an Urdu reply, regardless of app language
-  const isUrduScript = /[\u0600-\u06FF\u0750-\u077F]/.test(text);
-  const useUrdu = language === 'ur' || isUrduScript;
-  for (const qa of AI_QA_PAIRS) {
-    if (qa.pattern.test(text)) {
-      return useUrdu ? (qa.responseUr ?? qa.response) : qa.response;
-    }
-  }
-  return useUrdu ? AI_DEFAULT_RESPONSE_UR : AI_DEFAULT_RESPONSE;
-}
+const OFFLINE_AI_MESSAGE =
+  "I'm offline right now, but here's the most important safety rule: never share OTPs, PINs, or passwords with anyone — even if they claim to be from your bank.";
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [scanHistory, setScanHistory] = useState<ScanResult[]>(MOCK_SCAN_HISTORY);
-  const [stats, setStats]             = useState(MOCK_STATS);
+  const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
+  const [stats, setStats]             = useState(computeStats([]));
+  const [isHistoryLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError]       = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatThinking, setThinking]   = useState(false);
   const [textSize, setTextSizeState]    = useState<TextSizePreference>('normal');
   const [notificationsOn, setNotificationsOn] = useState(true);
+
+  const refreshHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const items = await getScanHistory(50);
+      if (items) {
+        const mapped = items.map(historyItemToScanResult);
+        setScanHistory(mapped);
+        setStats(computeStats(mapped));
+      } else {
+        // Backend unavailable or not authenticated — keep local state
+        setHistoryError('Could not load history. Using local scans only.');
+      }
+    } catch (err: any) {
+      console.warn('[AppContext] refreshHistory failed:', err.message);
+      setHistoryError('Could not load history.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const removeScan = useCallback(async (id: string): Promise<boolean> => {
+    const numericId = parseInt(id, 10);
+    if (!Number.isFinite(numericId)) return false;
+
+    const ok = await deleteScanHistory(numericId);
+    if (ok) {
+      setScanHistory(prev => {
+        const next = prev.filter(s => s.id !== id);
+        setStats(computeStats(next));
+        return next;
+      });
+    }
+    return ok;
+  }, []);
+
+  // Load persisted history on mount
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
 
   const addScan = useCallback(async (
     content: string,
@@ -163,13 +173,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const scan: ScanResult = { ...raw, id: genId(), timestamp: new Date() };
-    setScanHistory(prev => [scan, ...prev].slice(0, 50));
-    setStats(prev => ({
-      ...prev,
-      scansToday:     prev.scansToday + 1,
-      totalScans:     prev.totalScans + 1,
-      threatsBlocked: scan.risk === 'dangerous' ? prev.threatsBlocked + 1 : prev.threatsBlocked,
-    }));
+    setScanHistory(prev => {
+      const next = [scan, ...prev].slice(0, 50);
+      setStats(computeStats(next));
+      return next;
+    });
     return scan;
   }, []);
 
@@ -181,12 +189,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setThinking(true);
 
     try {
-      const apiReply = await sendChatMessageApi(text, language);
-      const replyText = apiReply || getMockAiResponse(text, language);
+      const replyText = await sendChatMessageApi(text, language);
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
-        content:   replyText,
+        content:   replyText || OFFLINE_AI_MESSAGE,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);
@@ -194,7 +201,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
-        content:   getMockAiResponse(text, language),
+        content:   OFFLINE_AI_MESSAGE,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);
@@ -211,7 +218,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        scanHistory, stats, addScan,
+        scanHistory, stats,
+        isHistoryLoading, historyError, refreshHistory, removeScan,
+        addScan,
         chatMessages, sendChatMessage, isChatThinking, clearChat,
         textSize, setTextSize,
         notificationsOn, setNotifications,

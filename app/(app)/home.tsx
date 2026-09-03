@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { IS_WEB } from '../../src/theme/responsive';
-import { useAuth, useApp } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
+import { useApp } from '../../src/store/AppContext';
 import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { Badge } from '../../src/components/ui/Badge';
@@ -27,7 +30,8 @@ export default function HomeScreen() {
   const { theme }              = useTheme();
   const { t }                  = useTranslation();
   const { user }               = useAuth();
-  const { scanHistory, textSize, stats } = useApp();
+  const { scanHistory, textSize, stats, isHistoryLoading, historyError, refreshHistory } = useApp();
+  const [refreshing, setRefreshing] = React.useState(false);
 
   // Derive protection status from recent scans
   const latestScan = scanHistory[0];
@@ -39,7 +43,7 @@ export default function HomeScreen() {
   const insets                 = useSafeAreaInsets();
   const isLarge                = textSize === 'large';
 
-  const userName = user?.name?.split(' ')[0] || 'Friend';
+  const userName = user?.name?.split(' ')[0] || t('home.friendFallback');
 
   // Time-aware greeting
   const getGreeting = () => {
@@ -49,11 +53,17 @@ export default function HomeScreen() {
     return t('home.greetingEvening', { name: userName });
   };
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refreshHistory();
+    setRefreshing(false);
+  }, [refreshHistory]);
+
   const quickActions = [
     {
       key:   'url',
       label: t('home.scanUrl'),
-      desc:  'Check fake links & websites',
+      desc:  t('home.scanUrlDesc'),
       icon:  'globe-outline',
       color: theme.colors.primary,
       bg:    theme.colors.primaryLight,
@@ -61,7 +71,7 @@ export default function HomeScreen() {
     {
       key:   'email',
       label: t('home.scanEmail'),
-      desc:  'Verify sender & content',
+      desc:  t('home.scanEmailDesc'),
       icon:  'mail-outline',
       color: theme.colors.secondaryDark,
       bg:    theme.colors.secondaryLight,
@@ -69,7 +79,7 @@ export default function HomeScreen() {
     {
       key:   'sms',
       label: t('home.scanSms'),
-      desc:  'Detect phishing texts & OTPs',
+      desc:  t('home.scanSmsDesc'),
       icon:  'chatbox-ellipses-outline',
       color: theme.colors.skyDark,
       bg:    theme.colors.skyLight,
@@ -77,7 +87,7 @@ export default function HomeScreen() {
     {
       key:   'call',
       label: t('home.scanCall'),
-      desc:  'Lookup unknown phone numbers',
+      desc:  t('home.scanCallDesc'),
       icon:  'call-outline',
       color: theme.colors.mintDark,
       bg:    theme.colors.mintLight,
@@ -103,6 +113,9 @@ export default function HomeScreen() {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* ── 1. Top Brand & Header Bar ──────────────────────── */}
         <View style={styles.topHeader}>
@@ -117,7 +130,7 @@ export default function HomeScreen() {
                 { backgroundColor: theme.colors.backgroundCard, borderColor: theme.colors.border },
               ]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Settings"
+              accessibilityLabel={t('home.settingsAccessibility')}
             >
               <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
             </TouchableOpacity>
@@ -366,7 +379,23 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {scanHistory.length === 0 ? (
+        {isHistoryLoading && scanHistory.length === 0 ? (
+          <Card variant="flat" padding={18} style={styles.emptyCard}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text
+              style={[
+                styles.emptyText,
+                {
+                  fontFamily: theme.fonts.body,
+                  color:      theme.colors.textSecondary,
+                  fontSize:   isLarge ? 14 : 13,
+                },
+              ]}
+            >
+              {t('home.loadingScans')}
+            </Text>
+          </Card>
+        ) : scanHistory.length === 0 ? (
           <Card variant="flat" padding={18} style={styles.emptyCard}>
             <Ionicons name="shield-outline" size={32} color={theme.colors.textTertiary} />
             <Text
@@ -379,7 +408,7 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              {t('home.noRecentScans')}
+              {historyError ? t('home.historyError') : t('home.noRecentScans')}
             </Text>
           </Card>
         ) : (

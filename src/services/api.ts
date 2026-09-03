@@ -15,6 +15,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { ScanResult } from '../constants/mockData';
 import { redactSensitive, inferContentType } from './redact';
+import { supabase } from './supabase';
 
 // ── Configuration ────────────────────────────────────────────
 function normalizeApiBaseUrl(value: unknown): string | null {
@@ -23,6 +24,9 @@ function normalizeApiBaseUrl(value: unknown): string | null {
 }
 
 function resolveApiBaseUrl(): string | null {
+  const envUrl = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
+  if (envUrl) return envUrl;
+
   const configuredUrl = normalizeApiBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl);
   if (configuredUrl) return configuredUrl;
 
@@ -33,6 +37,21 @@ function resolveApiBaseUrl(): string | null {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+
+/**
+ * Build request headers including the current Supabase access token
+ * when a session exists, so protected routes can identify the user.
+ */
+export async function authHeaders(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) {
+    return { 'Content-Type': 'application/json' };
+  }
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${data.session.access_token}`,
+  };
+}
 const API_TIMEOUT = 10000;
 
 // ── Types ────────────────────────────────────────────────────
@@ -51,6 +70,26 @@ export interface AnalyzeResponse {
   explanation_en:        string;
   explanation_roman_urdu: string;
   threat_indicators:     string[];
+}
+
+export interface HistoryItem {
+  id:          number;
+  input_hash:  string;
+  input_type:  'text' | 'link' | 'message' | 'phone';
+  risk_score:  number;
+  verdict:     'SAFE' | 'SUSPICIOUS' | 'DANGEROUS';
+  details:     {
+    content_preview?:    string;
+    explanation_en?:     string;
+    explanation_roman_urdu?: string;
+    threat_indicators?:  string[];
+    source?:             string;
+  };
+  created_at:  string;
+}
+
+export interface HistoryListResponse {
+  history: HistoryItem[];
 }
 
 export type AnalyzeOutcome =
@@ -107,9 +146,10 @@ export async function analyzeContent(
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
   try {
+    const headers = await authHeaders();
     const response = await fetch(`${API_BASE_URL}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ input: redactedInput, input_type: resolvedType }),
       signal: controller.signal,
     });
@@ -327,5 +367,121 @@ export async function sendChatMessageApi(
   } catch {
     clearTimeout(timeout);
     return null;
+  }
+}
+
+// ── Scan History ──────────────────────────────────────────────
+
+/**
+ * Fetch the authenticated user's scan history from the backend.
+ * Returns null if the backend is unavailable or the user is not signed in.
+ */
+export async function getScanHistory(limit: number = 50): Promise<HistoryItem[] | null> {
+  if (!API_BASE_URL) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const headers = await authHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/history?limit=${limit}`, {
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (response.status === 401) {
+      console.warn('[API] getScanHistory unauthorized');
+      return null;
+    }
+    if (!response.ok) {
+      console.warn(`[API] history returned ${response.status}`);
+      return null;
+    }
+
+    const data = (await response.json()) as HistoryListResponse;
+    return data.history || [];
+  } catch (err: any) {
+    clearTimeout(timeout);
+    console.warn('[API] getScanHistory failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Persist a scan result to the backend history.
+ * Returns the created HistoryItem or null if unavailable.
+ */
+export async function saveScanHistory(
+  input: string,
+  inputType: ApiInputType,
+  response: AnalyzeResponse
+): Promise<HistoryItem | null> {
+  if (!API_BASE_URL) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const headers = await authHeaders();
+    const res = await fetch(`${API_BASE_URL}/api/history`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        input,
+        input_type: inputType,
+        risk_score: response.risk_score,
+        verdict: response.verdict,
+        details: {
+          explanation_en: response.explanation_en,
+          explanation_roman_urdu: response.explanation_roman_urdu,
+          threat_indicators: response.threat_indicators,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn(`[API] saveScanHistory returned ${res.status}`);
+      return null;
+    }
+
+    const data = (await res.json()) as HistoryListResponse;
+    return data.history?.[0] ?? null;
+  } catch (err: any) {
+    clearTimeout(timeout);
+    console.warn('[API] saveScanHistory failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Delete a scan history item owned by the authenticated user.
+ * Returns true on success.
+ */
+export async function deleteScanHistory(id: number): Promise<boolean> {
+  if (!API_BASE_URL) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const headers = await authHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
+      method: 'DELETE',
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    return response.ok;
+  } catch (err: any) {
+    clearTimeout(timeout);
+    console.warn('[API] deleteScanHistory failed:', err.message);
+    return false;
   }
 }

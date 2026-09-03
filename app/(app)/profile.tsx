@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { IS_WEB } from '../../src/theme/responsive';
 import { shadow } from '../../src/theme/tokens';
-import { useAuth, useApp } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
+import { useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 import { Badge } from '../../src/components/ui/Badge';
@@ -32,9 +34,16 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const { user, logout } = useAuth();
-  const { stats, textSize } = useApp();
+  const { stats, textSize, refreshHistory } = useApp();
   const insets = useSafeAreaInsets();
   const isLarge = textSize === 'large';
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refreshHistory();
+    setRefreshing(false);
+  }, [refreshHistory]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -84,6 +93,9 @@ export default function ProfileScreen() {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* ── Top Bar / Header ───────────────────────────────── */}
         <View style={styles.topBar}>

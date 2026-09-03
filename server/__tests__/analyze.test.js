@@ -624,3 +624,67 @@ describe('combineResults', () => {
     assert.ok(result.explanation_roman_urdu.length > 0);
   });
 });
+
+// ═════════════════════════════════════════════════════════════
+//  14. Request validation middleware
+// ═════════════════════════════════════════════════════════════
+
+const {
+  validateAnalyzeRequest,
+  validateChatRequest,
+} = require('../src/middleware/validate');
+
+function mockRes() {
+  return {
+    statusCode: 200,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  };
+}
+
+function next() {}
+
+describe('validateAnalyzeRequest', () => {
+  it('rejects input longer than MAX_INPUT_LENGTH', () => {
+    const req = { body: { input: 'a'.repeat(6000), input_type: 'message' } };
+    const res = mockRes();
+    validateAnalyzeRequest(req, res, next);
+    assert.equal(res.statusCode, 400);
+    assert.ok(res.body.error.includes('exceeds maximum length'));
+  });
+
+  it('rejects missing input_type', () => {
+    const req = { body: { input: 'hello' } };
+    const res = mockRes();
+    validateAnalyzeRequest(req, res, next);
+    assert.equal(res.statusCode, 400);
+    assert.ok(res.body.error.includes('input_type'));
+  });
+});
+
+describe('validateChatRequest', () => {
+  it('rejects empty message', () => {
+    const req = { body: { message: '   ', language: 'en' } };
+    const res = mockRes();
+    validateChatRequest(req, res, next);
+    assert.equal(res.statusCode, 400);
+    assert.ok(res.body.error.includes('empty or whitespace'));
+  });
+
+  it('rejects unsupported language', () => {
+    const req = { body: { message: 'hello', language: 'fr' } };
+    const res = mockRes();
+    validateChatRequest(req, res, next);
+    assert.equal(res.statusCode, 400);
+    assert.ok(res.body.error.includes('language'));
+  });
+
+  it('allows valid message without language', () => {
+    const req = { body: { message: 'Is this link safe?' } };
+    const res = mockRes();
+    let called = false;
+    validateChatRequest(req, res, () => { called = true; });
+    assert.equal(res.statusCode, 200);
+    assert.ok(called);
+  });
+});

@@ -91,8 +91,41 @@ function validateCommunityReportRequest(req, res, next) {
   next();
 }
 
+const VALID_LANGUAGES = ['en', 'ur'];
+
+function validateChatRequest(req, res, next) {
+  const { message, language } = req.body || {};
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({
+      error: 'Field "message" is required and must be a non-empty string.',
+    });
+  }
+
+  if (message.trim().length === 0) {
+    return res.status(400).json({
+      error: 'Field "message" must not be empty or whitespace.',
+    });
+  }
+
+  if (message.length > MAX_INPUT_LENGTH) {
+    return res.status(400).json({
+      error: `Message exceeds maximum length of ${MAX_INPUT_LENGTH} characters.`,
+    });
+  }
+
+  if (language && !VALID_LANGUAGES.includes(language)) {
+    return res.status(400).json({
+      error: `Field "language" must be one of: ${VALID_LANGUAGES.join(', ')}`,
+    });
+  }
+
+  next();
+}
+
 module.exports = {
   validateAnalyzeRequest,
   validateCheckNumberRequest,
   validateCommunityReportRequest,
+  validateChatRequest,
 };

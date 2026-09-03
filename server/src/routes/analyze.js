@@ -2,9 +2,12 @@
 //  POST /api/analyze — Route Handler
 // ─────────────────────────────────────────────────────────────
 
+const crypto = require('crypto');
 const { analyzeWithRules } = require('../engine/rules');
 const { callLlm }          = require('../engine/llm');
 const { combineResults }   = require('../engine/combine');
+const { supabase, isAvailable } = require('../db/supabase');
+const { getUserFromToken } = require('../middleware/auth');
 
 /**
  * POST /api/analyze
@@ -40,7 +43,35 @@ async function handleAnalyze(req, res) {
     // ── 3. Combine results ──────────────────────────────────
     const finalResult = combineResults(ruleResult, llmResult);
 
-    // ── 4. Return response (strip internal fields) ──────────
+    // ── 4. Persist scan for authenticated users ─────────────
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const user = token ? await getUserFromToken(token) : null;
+
+    if (user && isAvailable()) {
+      try {
+        const inputHash = crypto.createHash('sha256').update(input).digest('hex');
+        await supabase.from('scan_history').insert({
+          user_id:    user.id,
+          input_hash: inputHash,
+          input_type,
+          risk_score: finalResult.risk_score,
+          verdict:    finalResult.verdict,
+          details:    {
+            content_preview:    input.slice(0, 200),
+            explanation_en:     finalResult.explanation_en,
+            explanation_roman_urdu: finalResult.explanation_roman_urdu,
+            threat_indicators:  finalResult.threat_indicators,
+            source:             finalResult.source,
+          },
+        });
+      } catch (persistErr) {
+        // Never fail the analysis response because persistence failed
+        console.error('[analyze] Failed to persist scan:', persistErr.message);
+      }
+    }
+
+    // ── 5. Return response (strip internal fields) ──────────
     res.json({
       risk_score:         finalResult.risk_score,
       verdict:            finalResult.verdict,

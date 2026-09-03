@@ -43,6 +43,7 @@ export interface ThemeColors {
   suspiciousText: string;
   suspiciousDark: string;
   danger:         string;
+  dangerLight:    string;
   dangerText:     string;
   dangerDark:     string;
 
@@ -128,6 +129,7 @@ export const lightTheme: Theme = {
     suspiciousText: Colors.suspiciousText,
     suspiciousDark: Colors.suspiciousDark,
     danger:         Colors.danger,
+    dangerLight:    Colors.dangerLight,
     dangerText:     Colors.dangerText,
     dangerDark:     Colors.dangerDark,
 

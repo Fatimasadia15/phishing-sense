@@ -21,7 +21,7 @@ import { I18nManager, View, StyleSheet } from 'react-native';
 
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { LanguageProvider }        from '../src/i18n/LanguageContext';
-import { AuthProvider }            from '../src/store/AppContext';
+import { AuthProvider }            from '../src/store/AuthContext';
 import { AppProvider }             from '../src/store/AppContext';
 import { ShareIntentHandler }      from '../src/components/ShareIntentHandler';
 import { initI18n, getSavedLanguage, RTL_LANGUAGES } from '../src/i18n/index';

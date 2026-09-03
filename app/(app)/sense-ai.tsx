@@ -20,7 +20,6 @@ import { useApp } from '../../src/store/AppContext';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useVoiceAssistant, detectLanguageForTTS } from '../../src/services/voice';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
-import { AI_SUGGESTIONS_EN, AI_SUGGESTIONS_UR } from '../../src/constants/mockData';
 
 // ─────────────────────────────────────────────────────────────
 //  Sense AI Screen — Phase 4 Redesign
@@ -84,7 +83,7 @@ export default function SenseAIScreen() {
   // When true, the next assistant reply is spoken aloud (voice-initiated chat)
   const speakNextRef = useRef(false);
 
-  const suggestions = language === 'ur' ? AI_SUGGESTIONS_UR : AI_SUGGESTIONS_EN;
+  const suggestions = t('senseAi.suggestions', { returnObjects: true }) as string[];
   const hasMessages = chatMessages.length > 0;
 
   // ── Existing logic (unchanged) ────────────────────────────
@@ -170,7 +169,7 @@ export default function SenseAIScreen() {
                 { fontFamily: theme.fonts.headingBold, color: theme.colors.textPrimary, fontSize: isLarge ? 20 : 17 },
               ]}
             >
-              Sense AI
+              {t('senseAi.title')}
             </Text>
             <Text
               style={[
@@ -178,7 +177,7 @@ export default function SenseAIScreen() {
                 { fontFamily: theme.fonts.body, color: isChatThinking ? theme.colors.primary : theme.colors.textSecondary, fontSize: isLarge ? 13 : 12 },
               ]}
             >
-              {isChatThinking ? '● Sense is thinking…' : 'Your safety companion'}
+              {isChatThinking ? `● ${t('senseAi.headerThinking')}` : t('senseAi.headerSubtitle')}
             </Text>
           </View>
 
@@ -188,7 +187,7 @@ export default function SenseAIScreen() {
               onPress={clearChat}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={[styles.clearBtn, { backgroundColor: theme.colors.backgroundMuted }]}
-              accessibilityLabel="Clear conversation"
+              accessibilityLabel={t('senseAi.clearConversation')}
               accessibilityRole="button"
             >
               <Ionicons name="trash-outline" size={16} color={theme.colors.textTertiary} />
@@ -223,7 +222,7 @@ export default function SenseAIScreen() {
                 { fontFamily: theme.fonts.headingBold, color: theme.colors.textPrimary, fontSize: isLarge ? 24 : 20 },
               ]}
             >
-              Hi, I'm Sense 👋
+              {t('senseAi.welcomeTitle')}
             </Text>
             <Text
               style={[
@@ -231,15 +230,15 @@ export default function SenseAIScreen() {
                 { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 16 : 14 },
               ]}
             >
-              Not sure about a message, link, call, or online request?{'\n'}Ask me — I'll help you understand.
+              {t('senseAi.welcomeSubtitle')}
             </Text>
 
             {/* Trust badges */}
             <View style={styles.trustRow}>
               {[
-                { icon: 'shield-checkmark-outline', label: 'Private' },
-                { icon: 'eye-off-outline',          label: 'Safe' },
-                { icon: 'heart-outline',            label: 'Friendly' },
+                { icon: 'shield-checkmark-outline', label: t('senseAi.trust.private') },
+                { icon: 'eye-off-outline',          label: t('senseAi.trust.safe') },
+                { icon: 'heart-outline',            label: t('senseAi.trust.friendly') },
               ].map(b => (
                 <View key={b.label} style={[styles.trustBadge, { backgroundColor: theme.colors.backgroundCard, borderColor: theme.colors.border }]}>
                   <Ionicons name={b.icon as any} size={14} color={theme.colors.primary} />
@@ -258,7 +257,7 @@ export default function SenseAIScreen() {
                   { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textTertiary, fontSize: isLarge ? 13 : 11 },
                 ]}
               >
-                TRY ASKING
+                {t('senseAi.suggestedTitle').toUpperCase()}
               </Text>
               {suggestions.map((sug, i) => (
                 <TouchableOpacity
@@ -343,7 +342,7 @@ export default function SenseAIScreen() {
                         { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primary, fontSize: isLarge ? 12 : 10 },
                       ]}
                     >
-                      SENSE
+                      {t('senseAi.aiLabel')}
                     </Text>
                   </View>
                 )}
@@ -387,7 +386,7 @@ export default function SenseAIScreen() {
             >
               <View style={[styles.aiLabelRow, { marginBottom: 8 }]}>
                 <Text style={[styles.aiLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primary, fontSize: isLarge ? 12 : 10 }]}>
-                  SENSE
+                  {t('senseAi.aiLabel')}
                 </Text>
               </View>
               <ThinkingDots color={theme.colors.primary} />
@@ -397,7 +396,7 @@ export default function SenseAIScreen() {
                   { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 13 : 12 },
                 ]}
               >
-                Thinking…
+                {t('senseAi.thinking')}
               </Text>
             </View>
           </View>
@@ -442,7 +441,7 @@ export default function SenseAIScreen() {
         {voiceState === 'listening' && recognizedText ? (
           <View style={[styles.voicePreviewBox, { backgroundColor: theme.colors.backgroundMuted }]}>
             <Text style={[styles.voicePreviewLabel, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
-              Hearing…
+              {t('senseAi.hearing')}
             </Text>
             <Text
               style={[styles.voicePreviewText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 14 }]}
@@ -481,7 +480,7 @@ export default function SenseAIScreen() {
             onChangeText={setInput}
             onFocus={() => setIsFocused(true)}
             onBlur={()  => setIsFocused(false)}
-            placeholder="Ask Sense anything about a suspicious message…"
+            placeholder={t('senseAi.placeholder')}
             placeholderTextColor={theme.colors.textTertiary}
             returnKeyType="send"
             onSubmitEditing={() => handleSend()}
@@ -494,7 +493,7 @@ export default function SenseAIScreen() {
                 fontSize:   isLarge ? 16 : 15,
               },
             ]}
-            accessibilityLabel="Ask Sense AI a question"
+            accessibilityLabel={t('senseAi.placeholder')}
           />
 
           {/* Voice input button */}
@@ -510,9 +509,9 @@ export default function SenseAIScreen() {
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={
-                voiceState === 'listening' ? 'Stop voice input'
-                : voiceState === 'speaking' ? 'Stop speaking'
-                : 'Ask by voice'
+                voiceState === 'listening' ? t('senseAi.stopVoiceInput')
+                : voiceState === 'speaking' ? t('senseAi.stopSpeaking')
+                : t('senseAi.askByVoice')
               }
               accessibilityState={{ disabled: isChatThinking }}
               style={[
@@ -582,7 +581,7 @@ export default function SenseAIScreen() {
             { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 11 : 10 },
           ]}
         >
-          🔒 Type or 🎙️ speak your question — English, Urdu, or Roman Urdu
+          {t('senseAi.privacyNote')}
         </Text>
       </View>
 

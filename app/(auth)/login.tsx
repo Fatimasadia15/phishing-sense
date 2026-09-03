@@ -14,25 +14,30 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { useAuth } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Card } from '../../src/components/ui/Card';
 import { LanguageToggle } from '../../src/components/ui/LanguageToggle';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 import { BrandLogo } from '../../src/components/ui/BrandLogo';
+import { SocialAuthButtons } from '../../src/components/auth/SocialAuthButtons';
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { login, isLoading } = useAuth();
+  const { login, signInWithOAuth, isLoading, authError, clearAuthError } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  React.useEffect(() => {
+    clearAuthError();
+  }, []);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -55,6 +60,15 @@ export default function LoginScreen() {
       router.replace('/(app)/home');
     } catch (e) {
       console.warn('Login error', e);
+    }
+  };
+
+  const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+    try {
+      await signInWithOAuth(provider);
+      router.replace('/(app)/home');
+    } catch (e) {
+      console.warn(`${provider} sign-in error`, e);
     }
   };
 
@@ -129,6 +143,7 @@ export default function LoginScreen() {
             onChangeText={(text) => {
               setEmail(text);
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              if (authError) clearAuthError();
             }}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -143,11 +158,31 @@ export default function LoginScreen() {
             onChangeText={(text) => {
               setPassword(text);
               if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              if (authError) clearAuthError();
             }}
             secureEntry
             error={errors.password}
             style={styles.fieldSpacing}
           />
+
+          {authError ? (
+            <View
+              style={[
+                styles.errorBanner,
+                { backgroundColor: theme.colors.danger },
+              ]}
+            >
+              <Ionicons name="alert-circle" size={16} color={theme.colors.dangerDark} />
+              <Text
+                style={[
+                  styles.errorBannerText,
+                  { color: theme.colors.dangerDark, fontFamily: theme.fonts.bodyMedium },
+                ]}
+              >
+                {authError}
+              </Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             onPress={() => router.push('/(auth)/forgot-password')}
@@ -178,6 +213,8 @@ export default function LoginScreen() {
             style={styles.actionBtn}
           />
         </Card>
+
+        <SocialAuthButtons onPress={handleSocialAuth} disabled={isLoading} />
 
         {/* Friendly AI Protection Note */}
         <View
@@ -304,6 +341,21 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 13,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    marginTop: -4,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   actionBtn: {
     marginTop: 4,

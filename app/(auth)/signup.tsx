@@ -14,19 +14,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { useAuth } from '../../src/store/AppContext';
+import { useAuth } from '../../src/store/AuthContext';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
 import { Card } from '../../src/components/ui/Card';
 import { LanguageToggle } from '../../src/components/ui/LanguageToggle';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
+import { SocialAuthButtons } from '../../src/components/auth/SocialAuthButtons';
 
 const { width } = Dimensions.get('window');
 
 export default function SignupScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { signup, isLoading } = useAuth();
+  const { signup, signInWithOAuth, isLoading, authError, clearAuthError, isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [name, setName] = useState('');
@@ -41,6 +42,10 @@ export default function SignupScreen() {
     confirmPassword?: string;
     terms?: string;
   }>({});
+
+  React.useEffect(() => {
+    clearAuthError();
+  }, []);
 
   const validate = () => {
     const newErrors: typeof errors = {};
@@ -69,9 +74,22 @@ export default function SignupScreen() {
     if (!validate()) return;
     try {
       await signup(name, email, password);
-      router.replace('/(app)/home');
+      if (isAuthenticated) {
+        router.replace('/(app)/home');
+      }
     } catch (e) {
       console.warn('Signup error', e);
+    }
+  };
+
+  const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+    try {
+      await signInWithOAuth(provider);
+      if (isAuthenticated) {
+        router.replace('/(app)/home');
+      }
+    } catch (e) {
+      console.warn(`${provider} sign-up error`, e);
     }
   };
 
@@ -165,6 +183,7 @@ export default function SignupScreen() {
             onChangeText={(text) => {
               setName(text);
               if (errors.name) setErrors((p) => ({ ...p, name: undefined }));
+              if (authError) clearAuthError();
             }}
             error={errors.name}
             style={styles.fieldSpacing}
@@ -177,6 +196,7 @@ export default function SignupScreen() {
             onChangeText={(text) => {
               setEmail(text);
               if (errors.email) setErrors((p) => ({ ...p, email: undefined }));
+              if (authError) clearAuthError();
             }}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -191,6 +211,7 @@ export default function SignupScreen() {
             onChangeText={(text) => {
               setPassword(text);
               if (errors.password) setErrors((p) => ({ ...p, password: undefined }));
+              if (authError) clearAuthError();
             }}
             secureEntry
             error={errors.password}
@@ -231,17 +252,38 @@ export default function SignupScreen() {
             onChangeText={(text) => {
               setConfirmPassword(text);
               if (errors.confirmPassword) setErrors((p) => ({ ...p, confirmPassword: undefined }));
+              if (authError) clearAuthError();
             }}
             secureEntry
             error={errors.confirmPassword}
             style={styles.fieldSpacing}
           />
 
+          {authError ? (
+            <View
+              style={[
+                styles.errorBanner,
+                { backgroundColor: theme.colors.danger },
+              ]}
+            >
+              <Ionicons name="alert-circle" size={16} color={theme.colors.dangerDark} />
+              <Text
+                style={[
+                  styles.errorBannerText,
+                  { color: theme.colors.dangerDark, fontFamily: theme.fonts.bodyMedium },
+                ]}
+              >
+                {authError}
+              </Text>
+            </View>
+          ) : null}
+
           <TouchableOpacity
             style={styles.termsRow}
             onPress={() => {
               setAgreeTerms((p) => !p);
               if (errors.terms) setErrors((p) => ({ ...p, terms: undefined }));
+              if (authError) clearAuthError();
             }}
             activeOpacity={0.8}
           >
@@ -284,6 +326,8 @@ export default function SignupScreen() {
             style={{ marginTop: 12 }}
           />
         </Card>
+
+        <SocialAuthButtons onPress={handleSocialAuth} disabled={isLoading} />
 
         {/* Footer Navigation */}
         <View style={styles.footerRow}>
@@ -404,6 +448,21 @@ const styles = StyleSheet.create({
   termsLabel: {
     fontSize: 13,
     flex: 1,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+    marginTop: -4,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   footerRow: {
     flexDirection: 'row',

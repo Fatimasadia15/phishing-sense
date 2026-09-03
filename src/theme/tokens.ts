@@ -33,9 +33,10 @@ export const Colors = {
   suspiciousText: '#92540A',
   suspiciousDark: '#E07B20',
 
-  danger:     '#FFE4E4',
-  dangerText: '#991B1B',
-  dangerDark: '#DC2626',
+  danger:       '#FFE4E4',
+  dangerLight:  '#FFF0F0',
+  dangerText:   '#991B1B',
+  dangerDark:   '#DC2626',
 
   // ── Neutral scale ───────────────────────────────────────────
   white:    '#FFFFFF',
