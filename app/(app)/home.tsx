@@ -211,12 +211,12 @@ export default function HomeScreen() {
               },
             ]}
           >
-            Sense is ready to help check your links, messages, and calls.
+            {t('home.orbReady')}
           </Text>
 
           {/* Primary Action Button */}
           <Button
-            label="Scan Something Now"
+            label={t('home.scanNow')}
             onPress={() => router.push('/(app)/scan')}
             variant="primary"
             size={IS_WEB ? 'md' : 'lg'}
@@ -304,7 +304,7 @@ export default function HomeScreen() {
             },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Panic Mode — Being scammed right now?"
+          accessibilityLabel={t('home.panicAccessibility')}
         >
           <View
             style={[
@@ -496,7 +496,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                Quick Security Tip
+                {t('home.securityTipTitle')}
               </Text>
               <Text
                 style={[
@@ -508,7 +508,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                Never share OTPs, PINs, or bank passwords over phone calls or SMS.
+                {t('home.securityTipBody')}
               </Text>
             </View>
           </View>
@@ -562,9 +562,9 @@ const styles = StyleSheet.create({
     gap:           8,
   },
   settingsBtn: {
-    width:          34,
-    height:         34,
-    borderRadius:   17,
+    width:          44,
+    height:         44,
+    borderRadius:   22,
     borderWidth:    1,
     alignItems:     'center',
     justifyContent: 'center',
