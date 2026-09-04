@@ -23,7 +23,8 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "apiBaseUrl": "http://192.168.0.106:3000",

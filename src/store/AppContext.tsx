@@ -35,6 +35,7 @@ interface AppContextValue {
   historyError:      string | null;
   refreshHistory:    () => Promise<void>;
   removeScan:        (id: string) => Promise<boolean>;
+  clearHistory:      () => Promise<void>;
   addScan:           (content: string, scanType?: FrontendScanType) => Promise<ScanResult>;
   chatMessages:      ChatMessage[];
   sendChatMessage:   (text: string, language?: string) => void;
@@ -220,6 +221,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearHistory = useCallback(async () => {
+    for (const item of scanHistory) {
+      const numericId = Number(item.id);
+      if (Number.isFinite(numericId)) {
+        deleteScanHistory(numericId).catch(() => {});
+      }
+    }
+    setScanHistory([]);
+    setStats({ scansToday: 0, totalScans: 0, threatsBlocked: 0 });
+  }, [scanHistory]);
+
   const clearChat = useCallback(() => setChatMessages([]), []);
 
   const setTextSize = useCallback((size: TextSizePreference) => setTextSizeState(size), []);
@@ -229,7 +241,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         scanHistory, stats,
-        isHistoryLoading, historyError, refreshHistory, removeScan,
+        isHistoryLoading, historyError, refreshHistory, removeScan, clearHistory,
         addScan,
         chatMessages, sendChatMessage, isChatThinking, clearChat,
         textSize, setTextSize,

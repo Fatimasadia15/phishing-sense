@@ -42,6 +42,7 @@ interface AuthContextValue {
   signup:          (name: string, email: string, password: string) => Promise<void>;
   logout:          () => Promise<void>;
   sendResetEmail:  (email: string) => Promise<void>;
+  updatePassword:  (newPassword: string) => Promise<void>;
   signInWithOAuth: (provider: 'google') => Promise<void>;
 }
 
@@ -332,12 +333,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     setLoading(true);
     try {
+      const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/reset-password`
+        : makeRedirectUri({ scheme: 'phishingsense', path: 'reset-password' });
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'phishingsense://reset-password',
+        redirectTo,
       });
       if (error) throw error;
     } catch (err: any) {
       setAuthError(err.message || 'Could not send reset email. Please try again.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to update password. Please try again.');
       throw err;
     } finally {
       setLoading(false);
@@ -399,6 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signup,
         logout,
         sendResetEmail,
+        updatePassword,
         signInWithOAuth,
       }}
     >

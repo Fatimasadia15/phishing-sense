@@ -35,6 +35,46 @@ export interface QAPair {
 
 export const AI_QA_PAIRS: QAPair[] = [
   {
+    // EN: Reset Password in App (SPECIFIC - Evaluated before generic "app")
+    pattern: /reset\s?password|forgot\s?password|change\s?password|update\s?password|pass\s?reset|new\s?password/i,
+    response:
+      '🔐 **Password Management in Phishing Sense:**\n• **Forgot Password:** Tap *Forgot Password?* on the login screen. The reset link in your email routes you directly to the **New Password & Confirm Password** screen.\n• **Change Password Anytime:** Go to **Settings** → **Change Account Password** to set a new password for your account.',
+    responseUr:
+      '🔐 **پاس ورڈ مینجمنٹ:**\n• **پاس ورڈ بھول گئے؟** لاگ ان سکرین پر *Forgot Password?* پر ٹیپ کریں۔ آپ کو ای میل میں لنک ملے گا جو **New Password & Confirm Password** سکرین پر لے جائے گا۔\n• **پاس ورڈ کی تبدیلی:** ایپ کی **Settings** سکرین پر جا کر **Change Account Password** سے کسی بھی وقت نیا پاس ورڈ سیٹ کریں۔',
+  },
+  {
+    // EN: Panic Mode emergency help (SPECIFIC)
+    pattern: /panic\s?mode|scammed\s?now|emergency|help\s?me|got\s?scammed|scam\s?help/i,
+    response:
+      '🚨 **Panic Mode (Scam Emergency):**\nIf you suspect you are being scammed right now:\n• Tap the red **Panic Mode** button on the Home screen.\n• It walks you through immediate emergency actions: freezing bank accounts, changing passwords, and reporting to FIA Cybercrime (1991).',
+    responseUr:
+      '🚨 **پینک موڈ (Panic Mode):**\nاگر آپ کے ساتھ اس وقت دھوکہ ہو رہا ہے:\n• ہوم سکرین پر سرخ **Panic Mode** بٹن دبائیں۔\n• یہ آپ کو فوراً بینک اکاؤنٹس فریز کرنے، پاس ورڈ بدلنے اور سائبر کرائم ہیلپ لائن (1991) پر رابطہ کرنے کی گائیڈ دے گا۔',
+  },
+  {
+    // EN: Scanner usage & phone lookup (SPECIFIC)
+    pattern: /how\s?to\s?scan|how\s?to\s?check|how\s?do\s?i\s?scan|how\s?use\s?scanner|check\s?number|scan\s?link|555-?01|toll\s?free/i,
+    response:
+      '🛡️ **How to Scan in Phishing Sense:**\n1. Tap **Scan** from the bottom menu.\n2. Select the matching tab (**Link**, **Email**, **SMS**, or **Phone**).\n3. Paste your suspicious text or link.\n4. Tap **Check for Risk** — Sense AI will calculate the risk score (0-100%) and explain threat indicators or spoofing reserved numbers.',
+    responseUr:
+      '🛡️ **فشنگ سینس میں اسکین کرنے کا طریقہ:**\n1. نیچے مینو سے **Scan** پر ٹیپ کریں۔\n2. مطلوبہ ٹیب چنیں (**Link**, **Email**, **SMS**, یا **Phone**).\n3. مشکوک مواد پیسٹ کریں۔\n4. **Check for Risk** پر ٹیپ کریں — سینس AI رسک اسکور (0-100%) اور تفصیلات ظاہر کرے گا۔',
+  },
+  {
+    // EN: Privacy & Data Protection in App (SPECIFIC)
+    pattern: /privacy|my\s?data|redact|safe\s?data|is\s?it\s?private|zero\s?trust/i,
+    response:
+      '🔒 **Zero-Trust Privacy in Phishing Sense:**\nPhishing Sense never sends passwords, PINs, or OTPs over the network. Our on-device redaction engine automatically masks sensitive data (`******`) before any risk analysis takes place.',
+    responseUr:
+      '🔒 **پرائیویسی کی ضمانت:** Phishing Sense آپ کا پاس ورڈ، OTP یا نجی معلومات کبھی بھی آن لائن نہیں بھیجتا۔ ہمارا سکیور کلائنٹ سائیڈ ریڈیکٹر آپ کے ڈیوائس پر ہی نجی معلومات (`******`) ماسک کرتا ہے۔',
+  },
+  {
+    // EN: Phishing Sense App Overview (GENERIC)
+    pattern: /phishing\s?sense|this\s?app|app\s?do|about\s?app|how\s?this\s?works?|how\s?app\s?works?|app\s?features?|who\s?are\s?you|what\s?is\s?this/i,
+    response:
+      '🛡️ Phishing Sense is your intelligent AI-powered anti-phishing & scam protection assistant:\n\n1. **Multi-Tab Scanner:** Analyzes Web Links, Emails, SMS text, and Phone numbers.\n2. **Real-Time Phone Lookup:** Identifies robocall spoofing, reserved 555-01XX lines, and international toll-free numbers.\n3. **Password Management:** Forgot password link & inline password update in Settings.\n4. **Zero-Trust Privacy:** Automatically redacts OTPs, PINs, and CNICs on your device before cloud analysis.\n5. **Panic Mode:** Emergency step-by-step guidance if you\'re being scammed right now.',
+    responseUr:
+      '🛡️ Phishing Sense آپ کا سمارٹ AI سیکیورٹی اسسٹنٹ ہے۔ یہ آپ کو آن لائن دھوکے سے بچاتا ہے:\n1. **اسکینر:** Web Links، Emails، SMS اور Phone Numbers کا سیکیورٹی رسک اسکور۔\n2. **کالر چیک:** مشکوک کالرز، 555-01XX اسپوفڈ نمبرز اور ٹول فری لائنز کی جانچ۔\n3. **پاس ورڈ مینجمنٹ:** پاس ورڈ کی ری سیٹ اور تبدیلی کی سہولت۔\n4. **زیرو ٹرسٹ پرائیویسی:** آپ کا OTP، PIN اور حساس ڈیٹا ڈیوائس پر ہی ماسک ہوتا ہے۔\n5. **پینک موڈ:** اگر اسکیم ہو جائے تو فوری ایمرجنسی ہیلپ لائن (1991) اور گائیڈ لائنس۔',
+  },
+  {
     // EN: phishing/scam/fraud · Roman Urdu: dhoka, farzi, nakli, jaali · Urdu: دھوکہ، فراڈ، جعلی
     pattern: /phish|fake|scam|fraud|dhok|farzi|nakli|jaali|jali|فشنگ|فراڈ|دھوکہ|جعلی|مکری/i,
     response:

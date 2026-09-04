@@ -17,6 +17,8 @@ import { Button } from '../../src/components/ui/Button';
 import { LanguageToggle } from '../../src/components/ui/LanguageToggle';
 import { SenseOrb } from '../../src/components/ui/SenseOrb';
 
+import { IS_WEB, MAX_CONTENT_WIDTH } from '../../src/theme/responsive';
+
 const SLIDES = [
   {
     key:      'slide1',
@@ -45,12 +47,14 @@ export default function OnboardingScreen() {
   const { theme } = useTheme();
   const { t }     = useTranslation();
   const insets    = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const slideWidth = IS_WEB ? Math.min(windowWidth, MAX_CONTENT_WIDTH) : windowWidth;
+
   const scrollRef = useRef<ScrollView>(null);
   const [current, setCurrent] = useState(0);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
     setCurrent(idx);
   };
 
@@ -58,7 +62,7 @@ export default function OnboardingScreen() {
     if (current < SLIDES.length - 1) {
       const next = current + 1;
       setCurrent(next);
-      scrollRef.current?.scrollTo({ x: next * width, animated: true });
+      scrollRef.current?.scrollTo({ x: next * slideWidth, animated: true });
     } else {
       router.replace('/(auth)/login');
     }
@@ -72,11 +76,11 @@ export default function OnboardingScreen() {
       <View
         style={{
           position: 'absolute',
-          top: -width * 0.3,
+          top: -slideWidth * 0.3,
           alignSelf: 'center',
-          width: width * 1.2,
-          height: width * 1.2,
-          borderRadius: (width * 1.2) / 2,
+          width: slideWidth * 1.2,
+          height: slideWidth * 1.2,
+          borderRadius: (slideWidth * 1.2) / 2,
           opacity: 0.45,
           backgroundColor: theme.colors.primaryLight,
         }}
@@ -113,7 +117,7 @@ export default function OnboardingScreen() {
         style={styles.scroll}
       >
         {SLIDES.map((slide) => (
-          <View key={slide.key} style={[styles.slide, { width }]}>
+          <View key={slide.key} style={[styles.slide, { width: slideWidth }]}>
             {/* Center Layered Sense Orb */}
             <View style={styles.orbWrap}>
               <SenseOrb state={slide.orbState} size="xl" />

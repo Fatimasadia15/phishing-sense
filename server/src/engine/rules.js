@@ -551,9 +551,94 @@ function analyzePhoneNumber(phoneNumber, communityReports = 0) {
   };
 }
 
+/**
+ * Asynchronously analyze a phone number with real-time live carrier/lookup validation.
+ * Includes strict timeout and error catching so network/API errors never crash the app.
+ *
+ * @param {string} phoneNumber
+ * @param {number} communityReports
+ * @returns {Promise<ReturnType<typeof analyzePhoneNumber>>}
+ */
+async function analyzePhoneNumberAsync(phoneNumber, communityReports = 0) {
+  const baseResult = analyzePhoneNumber(phoneNumber, communityReports);
+  if (!baseResult.valid || !baseResult.normalized_number) {
+    return baseResult;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+
+    const targetNum = encodeURIComponent(baseResult.international || baseResult.normalized_number);
+    // Real-time phone validation & line-type lookup
+    const res = await fetch(`https://api.veriphone.io/v2/verify?phone=${targetNum}`, {
+      signal: controller.signal,
+    }).catch(() => null);
+
+    clearTimeout(timer);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && data.status === 'success') {
+        const liveCarrier = data.carrier || null;
+        const lineType = data.phone_type || null;
+        const country = data.country || data.country_name || null;
+        const isValidNum = data.phone_valid;
+
+        let extraRisk = 0;
+        const extraReasons = [];
+        const extraReasonsUr = [];
+
+        if (liveCarrier && !baseResult.carrier) {
+          extraReasons.push(`Live Carrier: ${liveCarrier}.`);
+          extraReasonsUr.push(`Live Carrier: ${liveCarrier}.`);
+        }
+
+        if (lineType) {
+          extraReasons.push(`Line Type: ${lineType.toUpperCase()}.`);
+          extraReasonsUr.push(`Line Type: ${lineType.toUpperCase()}.`);
+
+          if (lineType.toLowerCase().includes('voip') || lineType.toLowerCase().includes('virtual')) {
+            extraRisk += 35;
+            extraReasons.push('VoIP / virtual phone line detected. Frequently used by scam callers to hide real location.');
+            extraReasonsUr.push('VoIP / virtual phone line shanakht hua. Scam callers real location chupanay ke liye istemal kartay hain.');
+          }
+        }
+
+        if (isValidNum === false) {
+          extraRisk += 25;
+          extraReasons.push('Telephony registry flag: Unallocated or invalid phone number.');
+          extraReasonsUr.push('Telephony registry flag: Ghair-faal ya invalid phone number.');
+        }
+
+        if (extraReasons.length > 0) {
+          const combinedRisk = clampRiskScore(Math.max(baseResult.risk_score, baseResult.risk_score + extraRisk));
+          const combinedVerdict = verdictForScore(combinedRisk);
+          const combinedReason = `${baseResult.reason} ${extraReasons.join(' ')}`.trim();
+          const combinedUr = `${baseResult.reason_roman_urdu} ${extraReasonsUr.join(' ')}`.trim();
+
+          return {
+            ...baseResult,
+            carrier: liveCarrier || baseResult.carrier,
+            risk_score: combinedRisk,
+            verdict: combinedVerdict,
+            reason: combinedReason,
+            reason_roman_urdu: combinedUr,
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[PhoneLookup] Live lookup fallback:', err.message);
+  }
+
+  return baseResult;
+}
+
 module.exports = {
   analyzeWithRules,
   analyzePhoneNumber,
+  analyzePhoneNumberAsync,
   normalizePhoneNumber,
   extractUrls,
   extractDomain,
