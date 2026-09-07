@@ -19,10 +19,6 @@
     },
     "android": {
       "package": "com.phishingsense.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#1A113A"
-      },
       "predictiveBackGestureEnabled": false
     },
     "web": {
