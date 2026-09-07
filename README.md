@@ -63,6 +63,7 @@ npm install
 cd ..
 ```
 
+<<<<<<< HEAD
 ## Environment Variables
 
 Create a root `.env` file for frontend configuration:
@@ -99,6 +100,10 @@ Never commit `.env` files, service-role keys, or other secrets. The service-role
 Run the SQL in `server/scripts/schema.sql` in the Supabase SQL Editor. Configure Supabase Auth providers and redirect URLs for the `phishingsense://` scheme as required by your deployment.
 
 ## Running Locally
+=======
+ Environment Variables
+ Running Locally
+>>>>>>> 751321a53e647833bf2f381d94c2930767d47942
 
 Start the backend:
 
@@ -164,4 +169,8 @@ npx tsc --noEmit
 
 ## License
 
+<<<<<<< HEAD
 See [LICENSE](LICENSE) for license information.
+=======
+See [LICENSE](LICENSE) for license information.
+>>>>>>> 751321a53e647833bf2f381d94c2930767d47942
