@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "phishingsense",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "backgroundColor": "#F8F8FF",
