@@ -40,7 +40,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '🔐 **Password Management in Phishing Sense:**\n• **Forgot Password:** Tap *Forgot Password?* on the login screen. The reset link in your email routes you directly to the **New Password & Confirm Password** screen.\n• **Change Password Anytime:** Go to **Settings** → **Change Account Password** to set a new password for your account.',
     responseUr:
-      '🔐 **پاس ورڈ مینجمنٹ:**\n• **پاس ورڈ بھول گئے؟** لاگ ان سکرین پر *Forgot Password?* پر ٹیپ کریں۔ آپ کو ای میل میں لنک ملے گا جو **New Password & Confirm Password** سکرین پر لے جائے گا۔\n• **پاس ورڈ کی تبدیلی:** ایپ کی **Settings** سکرین پر جا کر **Change Account Password** سے کسی بھی وقت نیا پاس ورڈ سیٹ کریں۔',
+      '🔐 **Password Management (Phishing Sense):**\n• **Password bhool gaye?** Login screen par *Forgot Password?* par tap karein. Naya password set karne ke liye email link mil jayega.\n• **Password tabdeel karna:** Settings screen par ja kar *Change Account Password* se kisi bhi waqt naya password set karein.',
   },
   {
     // EN: Panic Mode emergency help (SPECIFIC)
@@ -48,7 +48,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '🚨 **Panic Mode (Scam Emergency):**\nIf you suspect you are being scammed right now:\n• Tap the red **Panic Mode** button on the Home screen.\n• It walks you through immediate emergency actions: freezing bank accounts, changing passwords, and reporting to FIA Cybercrime (1991).',
     responseUr:
-      '🚨 **پینک موڈ (Panic Mode):**\nاگر آپ کے ساتھ اس وقت دھوکہ ہو رہا ہے:\n• ہوم سکرین پر سرخ **Panic Mode** بٹن دبائیں۔\n• یہ آپ کو فوراً بینک اکاؤنٹس فریز کرنے، پاس ورڈ بدلنے اور سائبر کرائم ہیلپ لائن (1991) پر رابطہ کرنے کی گائیڈ دے گا۔',
+      '🚨 **Panic Mode (Emergency Madad):**\nAgar aapke sath fraud ho raha hai:\n• Home screen par red **Panic Mode** button dabayein.\n• Yeh aapko foran bank accounts freeze karne, password badalne aur FIA Cybercrime (1991) par report karne ka tareeqa batayega.',
   },
   {
     // EN: Scanner usage & phone lookup (SPECIFIC)
@@ -56,7 +56,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '🛡️ **How to Scan in Phishing Sense:**\n1. Tap **Scan** from the bottom menu.\n2. Select the matching tab (**Link**, **Email**, **SMS**, or **Phone**).\n3. Paste your suspicious text or link.\n4. Tap **Check for Risk** — Sense AI will calculate the risk score (0-100%) and explain threat indicators or spoofing reserved numbers.',
     responseUr:
-      '🛡️ **فشنگ سینس میں اسکین کرنے کا طریقہ:**\n1. نیچے مینو سے **Scan** پر ٹیپ کریں۔\n2. مطلوبہ ٹیب چنیں (**Link**, **Email**, **SMS**, یا **Phone**).\n3. مشکوک مواد پیسٹ کریں۔\n4. **Check for Risk** پر ٹیپ کریں — سینس AI رسک اسکور (0-100%) اور تفصیلات ظاہر کرے گا۔',
+      '🛡️ **Phishing Sense mein Scan karne ka tareeqa:**\n1. Neeche menu se **Scan** par tap karein.\n2. Sahi tab chunein (**Link**, **Email**, **SMS**, ya **Phone**).\n3. Mashkook content ya number paste karein.\n4. **Check for Risk** dabayein — Sense AI foran risk score aur threat indicators dikhayega.',
   },
   {
     // EN: Privacy & Data Protection in App (SPECIFIC)
@@ -64,7 +64,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '🔒 **Zero-Trust Privacy in Phishing Sense:**\nPhishing Sense never sends passwords, PINs, or OTPs over the network. Our on-device redaction engine automatically masks sensitive data (`******`) before any risk analysis takes place.',
     responseUr:
-      '🔒 **پرائیویسی کی ضمانت:** Phishing Sense آپ کا پاس ورڈ، OTP یا نجی معلومات کبھی بھی آن لائن نہیں بھیجتا۔ ہمارا سکیور کلائنٹ سائیڈ ریڈیکٹر آپ کے ڈیوائس پر ہی نجی معلومات (`******`) ماسک کرتا ہے۔',
+      '🔒 **Zero-Trust Privacy:** Phishing Sense aapka password, OTP ya niji data kabhi internet par nahi bhejta. Humara on-device redactor aapke mobile par hi sensitive data (`******`) mask kar deta hai.',
   },
   {
     // EN: Phishing Sense App Overview (GENERIC)
@@ -72,7 +72,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '🛡️ Phishing Sense is your intelligent AI-powered anti-phishing & scam protection assistant:\n\n1. **Multi-Tab Scanner:** Analyzes Web Links, Emails, SMS text, and Phone numbers.\n2. **Real-Time Phone Lookup:** Identifies robocall spoofing, reserved 555-01XX lines, and international toll-free numbers.\n3. **Password Management:** Forgot password link & inline password update in Settings.\n4. **Zero-Trust Privacy:** Automatically redacts OTPs, PINs, and CNICs on your device before cloud analysis.\n5. **Panic Mode:** Emergency step-by-step guidance if you\'re being scammed right now.',
     responseUr:
-      '🛡️ Phishing Sense آپ کا سمارٹ AI سیکیورٹی اسسٹنٹ ہے۔ یہ آپ کو آن لائن دھوکے سے بچاتا ہے:\n1. **اسکینر:** Web Links، Emails، SMS اور Phone Numbers کا سیکیورٹی رسک اسکور۔\n2. **کالر چیک:** مشکوک کالرز، 555-01XX اسپوفڈ نمبرز اور ٹول فری لائنز کی جانچ۔\n3. **پاس ورڈ مینجمنٹ:** پاس ورڈ کی ری سیٹ اور تبدیلی کی سہولت۔\n4. **زیرو ٹرسٹ پرائیویسی:** آپ کا OTP، PIN اور حساس ڈیٹا ڈیوائس پر ہی ماسک ہوتا ہے۔\n5. **پینک موڈ:** اگر اسکیم ہو جائے تو فوری ایمرجنسی ہیلپ لائن (1991) اور گائیڈ لائنس۔',
+      '🛡️ Phishing Sense aapka smart AI security assistant hai:\n1. **Scanner:** Web Links, Emails, SMS aur Phone Numbers ka risk score check karta hai.\n2. **Caller Check:** Mashkook callers aur spoofed numbers ki pehchan karta hai.\n3. **Password Management:** Reset aur password change ki sahulat.\n4. **Zero-Trust Privacy:** OTP aur PIN device par hi mask hote hain.\n5. **Panic Mode:** Scam hone par emergency guidance aur FIA 1991 helpline.',
   },
   {
     // EN: phishing/scam/fraud · Roman Urdu: dhoka, farzi, nakli, jaali · Urdu: دھوکہ، فراڈ، جعلی
@@ -80,7 +80,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       'Phishing is when someone pretends to be a trusted company to steal your personal information. Always check the sender\'s email address carefully — real companies use their official domain (like @bankname.com), never a random Gmail or strange domain.',
     responseUr:
-      'فشنگ کا مطلب ہے کہ کوئی شخص کسی قابلِ بھروسہ کمپنی کا بہروپ بھر کر آپ کی ذاتی معلومات چرانے کی کوشش کرتا ہے۔ ہمیشہ بھیجنے والے کا ای میل ایڈریس غور سے چیک کریں — اصل کمپنیاں اپنے سرکاری ڈومین (جیسے @bankname.com) پر ای میل بھیجتی ہیں، کبھی بھی عجیب ڈومین سے نہیں۔',
+      'Phishing ka matlab hai ke koi dhokaybaaz kisi mashhoor company ka naam istemal kar ke aapki personal details churanay ki koshish karta hai. Hamesha sender ka email address check karein — genuine companies official domain (@bankname.com) istemal karti hain, koi aam Gmail ya ajeeb link nahi.',
   },
   {
     // EN: OTP/PIN/password · Roman Urdu: bata diya, de diya, share kar diya · Urdu: او ٹی پی، پاس ورڈ
@@ -88,7 +88,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       '⚠️ Never share your OTP, PIN, or password with anyone — not even someone claiming to be from your bank. Legitimate organizations will NEVER ask for these over the phone or SMS. If someone does, it\'s a scam. Hang up immediately.',
     responseUr:
-      '⚠️ اپنا OTP، PIN یا پاس ورڈ کسی کے ساتھ شیئر نہ کریں — چاہے وہ بینک کا نمائندہ ہونے کا دعویٰ کرے۔ قانونی ادارے کبھی بھی فون یا ایس ایم ایس پر یہ معلومات نہیں مانگتے۔ اگر کوئی مانگے تو یہ scam ہے — فوراً کال منقطع کر دیں۔',
+      '⚠️ Apna OTP, PIN ya password kisi ke sath share na karein — chahe woh bank ka numainda hone ka daawa karein. Asli bank ya companies kabhi bhi phone ya SMS par OTP nahi mangtein. Agar koi mange to yeh 100% scam hai — foran call kaat dein.',
   },
   {
     // EN: link/URL/click · Roman Urdu: link, website · Urdu: لنک، ویب سائٹ
@@ -96,7 +96,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       'Before clicking any link:\n1. Check the full URL carefully for misspellings (e.g., "paypa1.com")\n2. Hover over the link to see where it actually goes\n3. If it uses a URL shortener (bit.ly, tinyurl), be extra careful\n4. When in doubt, go directly to the official website by typing it yourself.',
     responseUr:
-      'کسی بھی لنک پر کلک کرنے سے پہلے:\n1. پورا URL غور سے پڑھیں — ہجے غلط تو نہیں (جیسے "paypa1.com")\n2. لنک پر ماؤس لے جا کر دیکھیں کہ یہ اصل میں کہاں جاتا ہے\n3. اگر لنک چھوٹا کیا گیا ہو (bit.ly، tinyurl) تو خصوصی احتیاط کریں\n4. شک ہو تو خود سرکاری ویب سائٹ ٹائپ کر کے کھولیں۔',
+      'Kisi bhi link par click karne se pehle:\n1. Poora URL ghaur se check karein ke spelling theek hai ya nahi (jaise "paypa1.com").\n2. Short links (bit.ly, tinyurl) se khaas ehtiyat karein.\n3. Shak ho to link ko Phishing Sense ke **Scan** tab mein check karein.',
   },
   {
     // EN: banks · Roman Urdu: bank names, account suspend · Urdu: بینک، اکاؤنٹ
@@ -104,7 +104,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       'Banks will NEVER:\n• Ask for your PIN or full account number via SMS\n• Ask you to "verify" your account by clicking a link\n• Call you asking for your OTP\n\nIf you get such a call or message, hang up and call your bank directly using the number on the back of your card.',
     responseUr:
-      'بینک کبھی نہیں کرتے:\n• ایس ایم ایس سے آپ کا PIN یا مکمل اکاؤنٹ نمبر مانگنا\n• لنک پر کلک کر کے اکاؤنٹ "وریفائی" کرنے کو کہنا\n• فون پر OTP مانگنا\n\nایسی کال یا پیغام ملے تو کال منقطع کریں اور کارڈ کے پچھے لکھے سرکاری نمبر پر خود بینک کو کال کریں۔',
+      'Banks kabhi bhi:\n• SMS par aapka PIN ya poora account number nahi mangte\n• Link par click kar ke account "verify" karne ko nahi kehte\n• Phone par OTP nahi mangte\n\nAisi call ya message aaye to foran kaat dein aur card ke peeche diye gaye official number par bank se rabta karein.',
   },
   {
     // EN: safe/legitimate · Roman Urdu: safe hai, asli hai, bharosa · Urdu: محفوظ، اصلی
@@ -112,7 +112,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       'To verify if something is legitimate:\n✓ Check the exact sender email address\n✓ Look for HTTPS in the URL (the padlock icon)\n✓ Search for the company\'s official website independently\n✓ Call the company directly using their official number\n✓ When in doubt, don\'t click — it\'s always safer to verify first.',
     responseUr:
-      'چیز کی اصل جانچ کرنے کے لیے:\n✓ بھیجنے والے کا مکمل ای میل ایڈریس دیکھیں\n✓ URL میں HTTPS اور تالے (🔒) کی علامت دیکھیں\n✓ کمپنی کی سرکاری ویب سائٹ الگ سے تلاش کریں\n✓ سرکاری نمبر پر خود کمپنی کو کال کریں\n✓ شک ہو تو کلک نہ کریں — پہلے تصدیق کرنا ہمیشہ بہتر ہے۔',
+      'Cheez ki asaliyat check karne ke liye:\n✓ Sender ka mukammal email address check karein\n✓ URL mein padlock icon aur HTTPS dekhein\n✓ Company ki official website alag se search karein\n✓ Shak ho to click na karein — pehle tasdeeq karna hamesha behtar hai.',
   },
   {
     // EN: already shared · Roman Urdu: bata diya, de diya, bhej diya · Urdu: شیئر کر دیا، بتا دیا
@@ -120,7 +120,7 @@ export const AI_QA_PAIRS: QAPair[] = [
     response:
       "🚨 If you've already shared sensitive information:\n1. Change your password immediately on the real website\n2. Call your bank right away to freeze your account if financial info was shared\n3. Enable two-factor authentication on your accounts\n4. Monitor your bank statements for unusual transactions\n5. Report the incident to your local cybercrime authority\n\nDon't panic — act quickly and you can minimize the damage.",
     responseUr:
-      '🚨 اگر آپ نے پہلے ہی حساس معلومات شیئر کر دی ہیں تو:\n1. اصل ویب سائٹ پر فوراً اپنا پاس ورڈ بدلیں\n2. مالی معلومات شیئر ہوئی ہوں تو فوراً بینک کو کال کر کے اکاؤنٹ فریز کروائیں\n3. اپنے اکاؤنٹس پر ٹو فیکٹر ایوتھنٹیکیشن آن کریں\n4. بینک اسٹیٹمنٹ پر غیر معمولی لین دین کی نظر رکھیں\n5. واقعے کی رپورٹ مقامی سائبر کرائم اتھارٹی کو کریں\n\nگھبرائیں نہیں — فوری اقدام سے نقصان کم ہو سکتا ہے۔',
+      '🚨 Agar aapne pehle hi sensitive information share kar di hai:\n1. Asli website par foran apna password change karein\n2. Bank helpline par call kar ke foran card aur account freeze karwayein\n3. Apne accounts par 2-Factor Authentication on karein\n4. Bank statement par ghaur karein aur FIA Cybercrime (1991) par report karein.\n\nPareshan na hon — foran action lene se nuqsan se bacha ja sakta hai.',
   },
 ];
 
@@ -128,7 +128,7 @@ export const AI_DEFAULT_RESPONSE =
   "That's a great question about online safety. As a general rule: if something feels suspicious or too good to be true, it probably is. Trust your instincts and always verify through official channels before taking any action. Is there something specific you'd like to know more about?";
 
 export const AI_DEFAULT_RESPONSE_UR =
-  'آن لائن سلامتی کے بارے میں اچھا سوال ہے۔ عمومی اصول یہ ہے: اگر کوئی چیز مشکوک لگے یا اتنی اچھی لگے کہ یقین نہ ہو، تو عام طور پر وہ جھوٹی ہوتی ہے۔ اپنے اندازے پر بھروسہ کریں اور کوئی بھی اقدام کرنے سے پہلے سرکاری ذرائع سے تصدیق کریں۔ کیا آپ کچھ مخصوص جاننا چاہتے ہیں؟';
+  'Online safety ke hawale se yeh ahem sawal hai. Aam usool yeh hai: agar koi message ya offer mashkook lage to hamesha official helpline se tasdeeq karein. Apna OTP ya password kabhi kisi ko na dein.';
 
 // ── Sense AI suggestions ────────────────────────────────────
 export const AI_SUGGESTIONS_EN = [

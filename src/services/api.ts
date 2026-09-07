@@ -79,6 +79,7 @@ export interface HistoryItem {
   risk_score:  number;
   verdict:     'SAFE' | 'SUSPICIOUS' | 'DANGEROUS';
   details:     {
+    content_full?:       string;
     content_preview?:    string;
     explanation_en?:     string;
     explanation_roman_urdu?: string;
@@ -434,6 +435,8 @@ export async function saveScanHistory(
         risk_score: response.risk_score,
         verdict: response.verdict,
         details: {
+          content_full: input,
+          content_preview: input.slice(0, 200),
           explanation_en: response.explanation_en,
           explanation_roman_urdu: response.explanation_roman_urdu,
           threat_indicators: response.threat_indicators,

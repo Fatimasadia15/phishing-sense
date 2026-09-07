@@ -73,6 +73,7 @@ async function handlePostHistory(req, res) {
 
   const enrichedDetails = {
     ...(details || {}),
+    content_full: input,
     content_preview: input.slice(0, 200),
   };
 
