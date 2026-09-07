@@ -30,6 +30,7 @@ interface InputProps {
   secureEntry?:   boolean;
   keyboardType?:  KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?:   boolean;
   autoComplete?:  string;
   error?:         string;
   disabled?:      boolean;
@@ -52,6 +53,7 @@ export function Input({
   secureEntry    = false,
   keyboardType   = 'default',
   autoCapitalize = 'sentences',
+  autoCorrect,
   autoComplete,
   error,
   disabled       = false,
@@ -98,6 +100,11 @@ export function Input({
     : isFocused
     ? theme.colors.borderFocus
     : theme.colors.border;
+
+  const effectiveAutoCapitalize = secureEntry
+    ? (autoCapitalize === 'sentences' ? 'none' : autoCapitalize)
+    : autoCapitalize;
+  const effectiveAutoCorrect = autoCorrect !== undefined ? autoCorrect : !secureEntry;
 
   return (
     <Animated.View
@@ -148,7 +155,8 @@ export function Input({
             placeholderTextColor={theme.colors.textDisabled}
             secureTextEntry={secureEntry && !showPassword}
             keyboardType={keyboardType}
-            autoCapitalize={autoCapitalize}
+            autoCapitalize={effectiveAutoCapitalize}
+            autoCorrect={effectiveAutoCorrect}
             autoComplete={autoComplete as any}
             editable={!disabled}
             multiline={multiline}

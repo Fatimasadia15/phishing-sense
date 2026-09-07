@@ -167,6 +167,8 @@ export default function ResetPasswordScreen() {
                   if (authError) clearAuthError();
                 }}
                 secureEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 error={error}
                 style={{ marginBottom: 16 }}
               />
@@ -181,6 +183,8 @@ export default function ResetPasswordScreen() {
                   if (authError) clearAuthError();
                 }}
                 secureEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={{ marginBottom: 20 }}
               />
 

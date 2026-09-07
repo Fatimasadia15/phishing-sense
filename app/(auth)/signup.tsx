@@ -209,6 +209,8 @@ export default function SignupScreen() {
               if (authError) clearAuthError();
             }}
             secureEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             error={errors.password}
             style={styles.fieldSpacing}
           />
@@ -250,6 +252,8 @@ export default function SignupScreen() {
               if (authError) clearAuthError();
             }}
             secureEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             error={errors.confirmPassword}
             style={styles.fieldSpacing}
           />

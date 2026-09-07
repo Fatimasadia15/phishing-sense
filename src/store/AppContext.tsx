@@ -68,7 +68,7 @@ function historyItemToScanResult(item: HistoryItem): ScanResult {
 
   return {
     id: String(item.id),
-    content: item.details?.content_preview || `[${item.input_type}]`,
+    content: item.details?.content_full || item.details?.content_preview || `[${item.input_type}]`,
     type: typeMap[item.input_type] ?? 'sms',
     risk: verdictMap[item.verdict] ?? 'suspicious',
     confidence: item.risk_score,
@@ -105,6 +105,9 @@ function toResultType(scanType: FrontendScanType): ScanResult['type'] {
 
 const OFFLINE_AI_MESSAGE =
   "I'm offline right now, but here's the most important safety rule: never share OTPs, PINs, or passwords with anyone — even if they claim to be from your bank.";
+
+const OFFLINE_AI_MESSAGE_UR =
+  "Main is waqt offline hoon, lekin sab se ahem hidayat yeh hai: apna OTP, PIN ya password kisi ke sath share na karein — chahe koi bank ka numainda ban kar hi kyun na mangay.";
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -199,12 +202,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setChatMessages(prev => [...prev, userMsg]);
     setThinking(true);
 
+    const isUrdu = language === 'ur' || language === 'roman_urdu';
+    const fallbackMsg = isUrdu ? OFFLINE_AI_MESSAGE_UR : OFFLINE_AI_MESSAGE;
+
     try {
       const replyText = await sendChatMessageApi(text, language);
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
-        content:   replyText || OFFLINE_AI_MESSAGE,
+        content:   replyText || fallbackMsg,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);
@@ -212,7 +218,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const aiMsg: ChatMessage = {
         id:        genId(),
         role:      'assistant',
-        content:   OFFLINE_AI_MESSAGE,
+        content:   fallbackMsg,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, aiMsg]);

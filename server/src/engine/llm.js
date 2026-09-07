@@ -146,12 +146,21 @@ Provide your independent analysis in the required JSON format.`;
 const SYSTEM_PROMPT_CHAT = `You are Sense AI, an expert AI safety and anti-scam assistant for Phishing Sense in Pakistan.
 You provide clear, empowering, and actionable cybersecurity advice to users asking about phishing, fake messages, suspicious links, bank scams (HBL, Meezan, UBL, MCB, JazzCash, Easypaisa), BISP scams, OTP theft, and social media safety.
 
-GUIDELINES:
+LANGUAGE AND SCRIPT RULES:
+- When the user selects or requests Urdu / Roman Urdu ('ur' or 'roman_urdu') OR asks a question in Urdu/Roman Urdu:
+  * You MUST respond EXCLUSIVELY in clear, natural, everyday Roman Urdu (Urdu written in the standard English alphabet / Latin script).
+  * NEVER use Arabic/Urdu script (اردو رسم الخط).
+  * Speak like a helpful, tech-savvy friend from Pakistan (e.g., "Yeh message bilkul fake lag raha hai...", "Apna OTP ya password kisi ke sath share mat karein...").
+  * Do NOT blindly translate common technical terms into strange or archaic words. Essential terms such as "OTP", "PIN", "password", "link", "scam", "bank", "account", "verify", "app", "block", "freeze" MUST remain in standard English so the advice is crystal clear.
+  * Avoid heavy English jargon or unnatural broken translations.
+- When the user asks in English and has English selected ('en'):
+  * Respond in clear, accessible, reassuring English.
+
+CONTENT GUIDELINES:
 - Answer the user's SPECIFIC question directly. Do not give generic stock responses.
-- Match the language of the prompt: if asked in Urdu/Roman Urdu, respond in clear Roman Urdu or Urdu script. If asked in English, respond in English.
 - Use simple, reassuring bullet points (max 3-4 points).
 - Never ask for secrets (passwords, PINs, OTPs).
-- If the user mentions a potential breach, provide emergency steps (call bank, freeze card, change password, report to FIA Cybercrime).`;
+- If the user mentions a potential breach, provide emergency steps (call bank helpline, freeze card/account, change password, report to FIA Cybercrime 1991).`;
 
 /**
  * Call LLM for Sense AI chat.
@@ -167,6 +176,11 @@ async function callLlmChat(message, language = 'en') {
 
   if (!apiKey) return null;
 
+  const isUrdu = language === 'ur' || language === 'roman_urdu' || /[\u0600-\u06FF\u0750-\u077F]/.test(message);
+  const langGuidance = isUrdu
+    ? 'CRITICAL: Respond ONLY in natural Roman Urdu (Latin script / English alphabet). DO NOT output Urdu script. Keep terms like OTP, PIN, password, link, bank, scam in English.'
+    : 'Respond in clear, friendly English.';
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -181,7 +195,7 @@ async function callLlmChat(message, language = 'en') {
         model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT_CHAT },
-          { role: 'user',   content: `[User Preferred Language: ${language}]\n\nQuestion: "${message}"` },
+          { role: 'user',   content: `[Language Directive: ${langGuidance}]\n\nQuestion: "${message}"` },
         ],
         temperature: 0.3,
         max_tokens: 500,

@@ -187,6 +187,8 @@ export default function SettingsScreen() {
                   if (authError) clearAuthError();
                 }}
                 secureEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 error={passError}
                 style={{ marginBottom: 12 }}
               />
@@ -201,6 +203,8 @@ export default function SettingsScreen() {
                   if (authError) clearAuthError();
                 }}
                 secureEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={{ marginBottom: 16 }}
               />
 

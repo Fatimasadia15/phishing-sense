@@ -44,3 +44,5 @@ yarn-error.*
 # OAuth / Firebase native config (contains secrets)
 google-services.json
 GoogleService-Info.plist
+
+.vercel

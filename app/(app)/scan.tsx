@@ -318,7 +318,9 @@ export default function ScanScreen() {
   const [reportCount,     setReportCount]     = useState(0);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [suggestedTab,    setSuggestedTab]    = useState<ScanType | null>(null);
+  const [expandedScanId,  setExpandedScanId]  = useState<string | null>(null);
 
+  const mainScrollRef = useRef<ScrollView>(null);
   const btnScale      = useRef(new Animated.Value(1)).current;
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const resultSlide   = useRef(new Animated.Value(20)).current;
@@ -555,6 +557,7 @@ export default function ScanScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <ScrollView
+        ref={mainScrollRef}
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -1084,29 +1087,147 @@ export default function ScanScreen() {
         ) : (
           recentScans.map((scan) => {
             const icon        = riskIcon(scan.risk);
-            const previewText = scan.content.length > 52 ? scan.content.slice(0, 52) + '…' : scan.content;
+            const isExpanded  = expandedScanId === scan.id;
+            const previewText = scan.content.length > 56 ? scan.content.slice(0, 56) + '…' : scan.content;
+
             return (
               <View
                 key={scan.id}
                 style={[
                   styles.historyCard,
-                  { backgroundColor: theme.colors.backgroundCard, borderColor: theme.colors.border, ...shadow('sm', { opacity: 0.06, radius: 6, offsetY: 2, elevation: 2 }) },
+                  isExpanded && styles.historyCardExpanded,
+                  {
+                    backgroundColor: theme.colors.backgroundCard,
+                    borderColor:     isExpanded ? theme.colors.primary : theme.colors.border,
+                    ...shadow('sm', { opacity: isExpanded ? 0.12 : 0.06, radius: isExpanded ? 8 : 6, offsetY: 2, elevation: isExpanded ? 4 : 2 }),
+                  },
                 ]}
               >
-                <View style={[styles.historyIconWrap, { backgroundColor: theme.colors.backgroundMuted }]}>
-                  <Ionicons name={icon.name} size={IS_WEB ? 17 : 20} color={icon.color} />
-                </View>
-                <View style={styles.historyContent}>
-                  <Text numberOfLines={1} style={[styles.historyText, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 13 }]}>
-                    {previewText}
-                  </Text>
-                  <View style={styles.historyMeta}>
-                    <Badge variant={scan.risk} label={t(`scan.result.${scan.risk}.label`)} dot={false} />
-                    <Text style={[styles.historyTime, { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
-                      {timeLabel(scan.timestamp)}
-                    </Text>
+                {/* Header row - tap to toggle full message */}
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => setExpandedScanId(isExpanded ? null : scan.id)}
+                  style={styles.historyCardHeader}
+                  accessibilityRole="button"
+                  accessibilityLabel={isExpanded ? 'Collapse previous scan' : 'Expand previous scan'}
+                >
+                  <View style={[styles.historyIconWrap, { backgroundColor: theme.colors.backgroundMuted }]}>
+                    <Ionicons name={icon.name} size={IS_WEB ? 17 : 20} color={icon.color} />
                   </View>
-                </View>
+                  <View style={styles.historyContent}>
+                    <Text numberOfLines={isExpanded ? undefined : 1} style={[styles.historyText, { fontFamily: theme.fonts.bodyMedium, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 13 }]}>
+                      {isExpanded ? scan.content.slice(0, 48) + (scan.content.length > 48 ? '…' : '') : previewText}
+                    </Text>
+                    <View style={styles.historyMeta}>
+                      <Badge variant={scan.risk} label={t(`scan.result.${scan.risk}.label`)} dot={false} />
+                      <Text style={[styles.historyTime, { fontFamily: theme.fonts.body, color: theme.colors.textTertiary, fontSize: isLarge ? 12 : 11 }]}>
+                        {timeLabel(scan.timestamp)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color={isExpanded ? theme.colors.primary : theme.colors.textTertiary}
+                    style={{ marginStart: 8 }}
+                  />
+                </TouchableOpacity>
+
+                {/* Expanded complete message & details */}
+                {isExpanded && (
+                  <View style={styles.historyExpandedBody}>
+                    <View style={[styles.historyDivider, { backgroundColor: theme.colors.border }]} />
+
+                    <Text style={[styles.historySectionLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textSecondary, fontSize: isLarge ? 12 : 11 }]}>
+                      {t('scan.fullMessageContent', { defaultValue: 'COMPLETE SCANNED CONTENT' })}
+                    </Text>
+
+                    <View style={[styles.historyFullTextWrap, { backgroundColor: theme.colors.backgroundMuted, borderColor: theme.colors.border }]}>
+                      <ScrollView
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator={true}
+                        style={{ maxHeight: 200 }}
+                      >
+                        <Text
+                          selectable
+                          style={[
+                            styles.historyFullText,
+                            { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 15 : 13 },
+                          ]}
+                        >
+                          {scan.content}
+                        </Text>
+                      </ScrollView>
+                    </View>
+
+                    {scan.details ? (
+                      <View style={{ marginTop: 10 }}>
+                        <Text style={[styles.historySectionLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textSecondary, fontSize: isLarge ? 12 : 11 }]}>
+                          {t('scan.result.details', { defaultValue: 'ASSESSMENT' })}
+                        </Text>
+                        <Text style={[styles.historyDetailText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 14 : 12 }]}>
+                          {scan.details}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {scan.explanationUr ? (
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={[styles.historySectionLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.primaryDark, fontSize: isLarge ? 12 : 11 }]}>
+                          ROMAN URDU
+                        </Text>
+                        <Text style={[styles.historyDetailText, { fontFamily: theme.fonts.body, color: theme.colors.textPrimary, fontSize: isLarge ? 14 : 12 }]}>
+                          {scan.explanationUr}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {scan.indicators && scan.indicators.length > 0 ? (
+                      <View style={{ marginTop: 10 }}>
+                        <Text style={[styles.historySectionLabel, { fontFamily: theme.fonts.bodySemibold, color: theme.colors.textSecondary, fontSize: isLarge ? 12 : 11 }]}>
+                          {t('scan.whatWeNoticed', { defaultValue: 'THREAT INDICATORS' })}
+                        </Text>
+                        {scan.indicators.map((ind, i) => (
+                          <View key={i} style={styles.historyIndicatorRow}>
+                            <View style={[styles.historyIndicatorDot, { backgroundColor: icon.color }]} />
+                            <Text style={[styles.historyIndicatorText, { fontFamily: theme.fonts.body, color: theme.colors.textSecondary, fontSize: isLarge ? 14 : 12 }]}>
+                              {ind}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    <View style={styles.historyActionRow}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setInputContent(scan.content);
+                          const targetType: ScanType = scan.type === 'phone' ? 'phone' : (scan.type === 'url' ? 'url' : (scan.type === 'email' ? 'email' : 'message'));
+                          setSelectedType(targetType);
+                          mainScrollRef.current?.scrollTo({ y: 0, animated: true });
+                        }}
+                        style={[styles.historyActionBtn, { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary }]}
+                      >
+                        <Ionicons name="refresh-outline" size={14} color={theme.colors.primaryDark} />
+                        <Text style={[styles.historyActionText, { color: theme.colors.primaryDark, fontFamily: theme.fonts.bodySemibold, fontSize: isLarge ? 13 : 12 }]}>
+                          Load in Scanner
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handleShareResult(scan)}
+                        style={[styles.historyActionBtn, { backgroundColor: theme.colors.backgroundMuted, borderColor: theme.colors.border }]}
+                      >
+                        <Ionicons name="share-outline" size={14} color={theme.colors.textSecondary} />
+                        <Text style={[styles.historyActionText, { color: theme.colors.textSecondary, fontFamily: theme.fonts.bodySemibold, fontSize: isLarge ? 13 : 12 }]}>
+                          {t('scan.shareResult')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
             );
           })
@@ -1201,12 +1322,27 @@ const styles = StyleSheet.create({
   emptyTitle:   { marginBottom: 8, letterSpacing: -0.2 },
   emptySub:     { textAlign: 'center', lineHeight: 21 },
 
-  historyCard:     { flexDirection: 'row', alignItems: 'center', gap: IS_WEB ? 10 : 12, borderRadius: IS_WEB ? 14 : 16, borderWidth: 1.5, padding: IS_WEB ? 10 : 14, marginBottom: 10 },
-  historyIconWrap: { width: IS_WEB ? 36 : 44, height: IS_WEB ? 36 : 44, borderRadius: IS_WEB ? 18 : 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  historyContent:  { flex: 1 },
-  historyText:     { marginBottom: 6 },
-  historyMeta:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  historyTime:     { marginLeft: 'auto' },
+  historyCard:         { borderRadius: IS_WEB ? 14 : 16, borderWidth: 1.5, padding: IS_WEB ? 10 : 14, marginBottom: 10 },
+  historyCardExpanded: { paddingBottom: 16 },
+  historyCardHeader:   { flexDirection: 'row', alignItems: 'center', gap: IS_WEB ? 10 : 12 },
+  historyIconWrap:     { width: IS_WEB ? 36 : 44, height: IS_WEB ? 36 : 44, borderRadius: IS_WEB ? 18 : 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  historyContent:      { flex: 1 },
+  historyText:         { marginBottom: 6 },
+  historyMeta:         { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  historyTime:         { marginLeft: 'auto' },
+
+  historyExpandedBody:  { marginTop: 12 },
+  historyDivider:       { height: 1, marginBottom: 12 },
+  historySectionLabel:  { letterSpacing: 0.8, marginBottom: 6 },
+  historyFullTextWrap:  { borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 8 },
+  historyFullText:      { lineHeight: 21 },
+  historyDetailText:    { lineHeight: 20 },
+  historyIndicatorRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 },
+  historyIndicatorDot:  { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
+  historyIndicatorText: { flex: 1, lineHeight: 18 },
+  historyActionRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
+  historyActionBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1 },
+  historyActionText:    { letterSpacing: 0.2 },
 
   tipsCard:      { borderRadius: IS_WEB ? 14 : 16, borderWidth: 1, padding: IS_WEB ? 12 : 16, marginTop: 8 },
   tipsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },

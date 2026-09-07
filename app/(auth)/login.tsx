@@ -28,7 +28,7 @@ const { width } = Dimensions.get('window');
 export default function LoginScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { login, signInWithOAuth, demoLogin, isLoading, authError, clearAuthError } = useAuth();
+  const { login, signInWithOAuth, isLoading, authError, clearAuthError } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
@@ -56,16 +56,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validate()) return;
     try {
-      await login(email, password);
-      router.replace('/(app)/home');
-    } catch {
-      // Error is set in AuthContext
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    try {
-      await demoLogin();
+      await login(email.trim().toLowerCase(), password);
       router.replace('/(app)/home');
     } catch {
       // Error is set in AuthContext
@@ -155,6 +146,7 @@ export default function LoginScreen() {
             }}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
             error={errors.email}
             style={styles.fieldSpacing}
           />
@@ -169,6 +161,8 @@ export default function LoginScreen() {
               if (authError) clearAuthError();
             }}
             secureEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             error={errors.password}
             style={styles.fieldSpacing}
           />
@@ -219,16 +213,6 @@ export default function LoginScreen() {
             fullWidth
             icon={<Ionicons name="log-in-outline" size={20} color="#FFFFFF" />}
             style={styles.actionBtn}
-          />
-
-          <Button
-            label="⚡ Quick Demo Sign In (1-Tap)"
-            onPress={handleDemoLogin}
-            loading={isLoading}
-            variant="secondary"
-            size="md"
-            fullWidth
-            style={{ marginTop: 10 }}
           />
         </Card>
 
