@@ -63,42 +63,8 @@ npm install
 cd ..
 ```
 
-## Environment Variables
-
-Create a root `.env` file for frontend configuration:
-
-```env
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-Create `server/.env` for backend configuration:
-
-```env
-PORT=3000
-NODE_ENV=development
-CORS_ORIGIN=
-MAX_BODY_SIZE=5000
-LLM_PROVIDER=none
-LLM_API_KEY=
-LLM_API_URL=https://api.openai.com/v1/chat/completions
-LLM_MODEL=gpt-4o-mini
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX_REQUESTS=20
-MAX_INPUT_LENGTH=5000
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-Never commit `.env` files, service-role keys, or other secrets. The service-role key must only be used by the backend.
-
-## Database Setup
-
-Run the SQL in `server/scripts/schema.sql` in the Supabase SQL Editor. Configure Supabase Auth providers and redirect URLs for the `phishingsense://` scheme as required by your deployment.
-
-## Running Locally
+ Environment Variables
+ Running Locally
 
 Start the backend:
 
